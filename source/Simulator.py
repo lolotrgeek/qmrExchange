@@ -1,18 +1,20 @@
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 from .Exchange import Exchange
 from .Agent import Agent
 from ._utils import get_datetime_range, get_timedelta, get_pandas_time
 
 
 class Simulator():
-    def __init__(self, from_date=datetime(1, 1, 1), time_unit='day'):
+    def __init__(self, from_date=datetime(1, 1, 1), time_unit='day', episodes=0):
         self.dt = from_date
         self.timeDelta = get_timedelta(time_unit)
         self.agents = []
         self.exchange = Exchange(datetime=from_date)
         self._from_date = from_date
         self._time_unit = time_unit
+        self._episodes = episodes
+        self.episode = 0
 
     def add_agent(self, agent: Agent):
         # TODO: check that no existing agent already has the same name
@@ -21,14 +23,18 @@ class Simulator():
 
     def next(self):
         try:
+            if(self._episodes > 0 and self.episode >= self._episodes):
+                return False
             if(type(self.dt) is str):
                 print(f'dt is str')
                 return False
             self.dt = self.dt + self.timeDelta
+            # print(type(self.dt), self.dt)
             self.exchange._set_datetime(self.dt)
             for agent in self.agents:
                 agent.next()
             self.__update_agents_cash()
+            self.episode += 1
             return True
         except KeyboardInterrupt:
             return False
@@ -36,12 +42,16 @@ class Simulator():
             print(f'Exception in Simulator.next(): {e}')
             return False
 
-    def run(self):
-        while True:
-            if not self.next():
-                break
+    def run(self, run_event=None):
+        if(run_event == None):
+            while True:
+                if not self.next():
+                    break
+        else:
+            while True and run_event.is_set():
+                if not self.next():
+                    break
 
-    #TODO: call these methods with flask api while the loop is running
     def get_price_bars(self, ticker, bar_size='1D'):
         return self.exchange.get_price_bars(ticker, bar_size)
 
@@ -70,7 +80,8 @@ class Simulator():
 
     @property
     def trades(self):
-        return self.exchange.trades
+        latest_trades = self.exchange.trades
+        return latest_trades
 
     def __update_agents_cash(self):
         for update in self.exchange.agents_cash_updates:
