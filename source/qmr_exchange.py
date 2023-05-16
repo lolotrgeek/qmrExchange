@@ -324,7 +324,6 @@ class Exchange():
         self.datetime = dt
 
 
-
 class Agent():
     """The Agent class is the base class for developing different traders that participate in the simulated exchange.
     """

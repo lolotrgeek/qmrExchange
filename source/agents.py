@@ -1,4 +1,4 @@
-from .qmr_exchange import Agent
+from .Agent import Agent
 import random
 
 class RandomMarketTaker(Agent):
