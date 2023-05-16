@@ -16,6 +16,10 @@ class Simulator():
         self._episodes = episodes
         self.episode = 0
 
+    def update_datetime(self, dt):
+        self.dt = dt
+        self.exchange._set_datetime(dt)
+
     def add_agent(self, agent: Agent):
         # TODO: check that no existing agent already has the same name
         agent._set_exchange(self.exchange)
@@ -28,18 +32,13 @@ class Simulator():
             if(type(self.dt) is str):
                 print(f'dt is str')
                 return False
-            self.dt = self.dt + self.timeDelta
-            # print(type(self.dt), self.dt)
-            self.exchange._set_datetime(self.dt)
+            self.update_datetime(self.dt + self.timeDelta)
             for agent in self.agents:
                 agent.next()
             self.__update_agents_cash()
             self.episode += 1
             return True
         except KeyboardInterrupt:
-            return False
-        except Exception as e:
-            print(f'Exception in Simulator.next(): {e}')
             return False
 
     def run(self, run_event=None):

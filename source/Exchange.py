@@ -43,13 +43,16 @@ class Exchange():
         return self.books[ticker]
 
     def _process_trade(self, ticker, qty, price, buyer, seller):
-        self.trade_log.append(
-            Trade(ticker, qty, price, buyer, seller,self.datetime)
-        )
-        self.agents_cash_updates.extend([
-            {'agent':buyer,'cash_flow':-qty*price,'ticker':ticker,'qty': qty},
-            {'agent':seller,'cash_flow':qty*price,'ticker':ticker,'qty': -qty}
-        ])
+        try:
+            self.trade_log.append(
+                Trade(ticker, qty, price, buyer, seller,self.datetime)
+            )
+            self.agents_cash_updates.extend([
+                {'agent':buyer,'cash_flow':-qty*price,'ticker':ticker,'qty': qty},
+                {'agent':seller,'cash_flow':qty*price,'ticker':ticker,'qty': -qty}
+            ])
+        except Exception as e:
+            print(f'Exception in Exchange._process_trade(): {e}')
         
     
 
@@ -62,7 +65,9 @@ class Exchange():
         Returns:
             Trade
         """
-        return next(trade for trade in self.trade_log[::-1] if trade.ticker == ticker)
+        latest_trade = (trade for trade in self.trade_log[::-1] if trade.ticker == ticker)
+        print(latest_trade)
+        return next(latest_trade)
 
     def get_trades(self, ticker:str) -> pd.DataFrame:
         """Retrieves all past trades of a given asset
