@@ -1,8 +1,9 @@
 
-from main import *
+from .Agents import NaiveMarketMaker, RandomMarketTaker
+from .Simulator import Simulator
 import time
 import threading
-from API import API
+from .API import API
 # from WebSockets import WebSockets
 
 time_interval = 'minute'
@@ -43,5 +44,4 @@ def main():
         print("threads successfully closed")
 
 
-if __name__ == '__main__':
-    main()
+

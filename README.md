@@ -55,7 +55,14 @@ Uses Python 3.11.3
 pip install plotly, pandas 
 ```
 
-## Basic usage of qmrExchange
+### Run
+Spins up an instance with two agents and API access.
+```
+python main.py
+```
+Edit `./source/backend/run.py` to change.
+
+## Notebook usage of qmrExchange
 ### Import required libraries
 
 ```python

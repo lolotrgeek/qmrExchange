@@ -1,9 +1,13 @@
-from source.OrderSide import OrderSide
-from source.LimitOrder import LimitOrder
-from source.OrderBook import OrderBook
-from source.Exchange import Exchange
-from source.Simulator import Simulator
-from source.Agents import RandomMarketTaker, NaiveMarketMaker
+from source.backend.OrderSide import OrderSide
+from source.backend.LimitOrder import LimitOrder
+from source.backend.OrderBook import OrderBook
+from source.backend.Exchange import Exchange
+from source.backend.Simulator import Simulator
+from source.backend.Agents import RandomMarketTaker, NaiveMarketMaker
+from source.backend.run import main
+
+if __name__ == '__main__':
+    main()    
 
 # export all imports
 __all__ = [
