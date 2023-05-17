@@ -49,7 +49,13 @@ qmrExchange is an ideal environment for implementing, testing, and quantifying t
 ### Adversarial Algorithms
 Much like in the spirit of General Adversarial Networks and Game Theory, an implementation where a profit-maximizing agent’s behavior is calibrated based on the predefined behavior of other market participants is possible. For an interesting introduction to game theory applied to financial markets, refer to Allen & Morris (2022).
 
-## Basig usage of qmrExchange
+## Install
+Uses Python 3.11.3
+```
+pip install plotly, pandas 
+```
+
+## Basic usage of qmrExchange
 ### Import required libraries
 
 ```python
