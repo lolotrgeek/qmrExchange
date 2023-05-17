@@ -220,7 +220,6 @@ class Exchange():
     def get_price_bars(self, ticker, bar_size='1D'):
         trades = self.trades
         trades = trades[trades['ticker']== ticker]
-        print(trades.index)
         df = trades.resample(bar_size).agg({'price': 'ohlc', 'qty': 'sum'})
         df.columns = df.columns.droplevel()
         df.rename(columns={'qty':'volume'},inplace=True)
