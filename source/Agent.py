@@ -173,4 +173,3 @@ class Agent():
 
     def next(self):  
         pass
-

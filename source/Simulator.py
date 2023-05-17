@@ -4,26 +4,25 @@ from .Exchange import Exchange
 from .Agent import Agent
 from ._utils import get_datetime_range, get_timedelta, get_pandas_time
 
-
 class Simulator():
-    def __init__(self, from_date=datetime(1, 1, 1), time_unit='day', episodes=0):
-        self.dt = from_date
+    def __init__(self, from_date=datetime(2022,1,1), time_unit='day', episodes=0):
         self.timeDelta = get_timedelta(time_unit)
+        self.dt = from_date
         self.agents = []
         self.exchange = Exchange(datetime=from_date)
         self._from_date = from_date
         self._time_unit = time_unit
         self._episodes = episodes
         self.episode = 0
+    
+    def update_datetime(self):
+        self.dt +=self.timeDelta
+        self.exchange._set_datetime(self.dt)
 
-    def update_datetime(self, dt):
-        self.dt = dt
-        self.exchange._set_datetime(dt)
-
-    def add_agent(self, agent: Agent):
+    def add_agent(self,agent:Agent):
         # TODO: check that no existing agent already has the same name
         agent._set_exchange(self.exchange)
-        self.agents.append(agent)
+        self.agents.append(agent) 
 
     def next(self):
         try:
@@ -32,7 +31,7 @@ class Simulator():
             if(type(self.dt) is str):
                 print(f'dt is str')
                 return False
-            self.update_datetime(self.dt + self.timeDelta)
+            self.update_datetime()
             for agent in self.agents:
                 agent.next()
             self.__update_agents_cash()
@@ -40,7 +39,7 @@ class Simulator():
             return True
         except KeyboardInterrupt:
             return False
-
+        
     def run(self, run_event=None):
         if(run_event == None):
             while True:
@@ -79,8 +78,7 @@ class Simulator():
 
     @property
     def trades(self):
-        latest_trades = self.exchange.trades
-        return latest_trades
+        return self.exchange.trades
 
     def __update_agents_cash(self):
         for update in self.exchange.agents_cash_updates:
@@ -88,12 +86,11 @@ class Simulator():
             # Check if not None because initial seed is not an agent
             if agent_idx is not None:
                 self.agents[agent_idx].cash += update['cash_flow']
-                self.agents[agent_idx]._transactions.append(
-                    {'dt': self.dt, 'cash_flow': update['cash_flow'], 'ticker': update['ticker'], 'qty': update['qty']})
+                self.agents[agent_idx]._transactions.append({'dt':self.dt,'cash_flow':update['cash_flow'],'ticker':update['ticker'],'qty':update['qty']})
         self.exchange.agents_cash_updates = []
 
     def get_agent(self, agent_name):
         return next((d for (index, d) in enumerate(self.agents) if d.name == agent_name), None)
 
-    def __get_agent_index(self, agent_name):
+    def __get_agent_index(self,agent_name):
         return next((index for (index, d) in enumerate(self.agents) if d.name == agent_name), None)

@@ -43,16 +43,13 @@ class Exchange():
         return self.books[ticker]
 
     def _process_trade(self, ticker, qty, price, buyer, seller):
-        try:
-            self.trade_log.append(
-                Trade(ticker, qty, price, buyer, seller,self.datetime)
-            )
-            self.agents_cash_updates.extend([
-                {'agent':buyer,'cash_flow':-qty*price,'ticker':ticker,'qty': qty},
-                {'agent':seller,'cash_flow':qty*price,'ticker':ticker,'qty': -qty}
-            ])
-        except Exception as e:
-            print(f'Exception in Exchange._process_trade(): {e}')
+        self.trade_log.append(
+            Trade(ticker, qty, price, buyer, seller,self.datetime)
+        )
+        self.agents_cash_updates.extend([
+            {'agent':buyer,'cash_flow':-qty*price,'ticker':ticker,'qty': qty},
+            {'agent':seller,'cash_flow':qty*price,'ticker':ticker,'qty': -qty}
+        ])
         
     
 
@@ -65,9 +62,7 @@ class Exchange():
         Returns:
             Trade
         """
-        latest_trade = (trade for trade in self.trade_log[::-1] if trade.ticker == ticker)
-        print(latest_trade)
-        return next(latest_trade)
+        return next(trade for trade in self.trade_log[::-1] if trade.ticker == ticker)
 
     def get_trades(self, ticker:str) -> pd.DataFrame:
         """Retrieves all past trades of a given asset
@@ -225,6 +220,7 @@ class Exchange():
     def get_price_bars(self, ticker, bar_size='1D'):
         trades = self.trades
         trades = trades[trades['ticker']== ticker]
+        print(trades.index)
         df = trades.resample(bar_size).agg({'price': 'ohlc', 'qty': 'sum'})
         df.columns = df.columns.droplevel()
         df.rename(columns={'qty':'volume'},inplace=True)

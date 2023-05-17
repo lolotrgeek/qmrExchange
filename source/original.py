@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import List, Union
 import pandas as pd
 from enum import Enum
-from ._utils import get_datetime_range, get_random_string, get_pandas_time, get_timedelta
+from ._utils import get_datetime_range, get_random_string, get_pandas_time
 
 class OrderSide(Enum):
     BUY = 'buy'
@@ -495,22 +495,20 @@ class Agent():
     def next(self):  
         pass
 
-
 class Simulator():
-    def __init__(self, from_date=datetime(2022,1,1), time_unit='day', episodes=0):
-        self.timeDelta = get_timedelta(time_unit)
+    def __init__(self, from_date=datetime(2022,1,1), to_date=datetime(2022,12,31), time_unit='day'):
+        self.datetime_range = iter(get_datetime_range(from_date,to_date,time_unit))
         self.dt = from_date
         self.agents = []
         self.exchange = Exchange(datetime=from_date)
         self._from_date = from_date
+        self._to_date = to_date
         self._time_unit = time_unit
-        self._episodes = episodes
-        self.episode = 0
-    
-    def update_datetime(self):
-        self.dt +=self.timeDelta
-        self.exchange._set_datetime(self.dt)
 
+        # Move to first dt for easier postprocessing holdings
+        next(self.datetime_range)
+
+    
     def add_agent(self,agent:Agent):
         # TODO: check that no existing agent already has the same name
         agent._set_exchange(self.exchange)
@@ -518,52 +516,36 @@ class Simulator():
 
     def next(self):
         try:
-            if(self._episodes > 0 and self.episode >= self._episodes):
-                return False
-            if(type(self.dt) is str):
-                print(f'dt is str')
-                return False
-            self.update_datetime()
+            self.dt = next(self.datetime_range)
+            self.exchange._set_datetime(self.dt)
             for agent in self.agents:
                 agent.next()
             self.__update_agents_cash()
-            self.episode += 1
             return True
-        except KeyboardInterrupt:
+        except StopIteration:
             return False
-        
-    def run(self, run_event=None):
-        if(run_event == None):
-            while True:
-                if not self.next():
-                    break
-        else:
-            while True and run_event.is_set():
-                if not self.next():
-                    break
+    def run(self):
+        while True:
+            if not self.next():
+                break
 
     def get_price_bars(self, ticker, bar_size='1D'):
         return self.exchange.get_price_bars(ticker, bar_size)
 
-    def get_portfolio_history(self, agent):
+    def get_portfolio_history(self,agent):
         agent = self.get_agent(agent)
-        bar_size = get_pandas_time(self._time_unit)
-        portfolio = pd.DataFrame(index=get_datetime_range(
-            self._from_date, self.dt, self._time_unit))
+        bar_size =  get_pandas_time(self._time_unit)
+        portfolio = pd.DataFrame(index=get_datetime_range(self._from_date,self._to_date,self._time_unit))
         transactions = pd.DataFrame(agent._transactions).set_index('dt')
         for ticker in list(self.exchange.books.keys()):
-            qty_asset = pd.DataFrame(
-                transactions[transactions['ticker'] == ticker]['qty'])
+            qty_asset = pd.DataFrame(transactions[transactions['ticker']==ticker]['qty'])
             qty_asset = qty_asset.resample(bar_size).agg('sum').cumsum()
-            price = pd.DataFrame(index=get_datetime_range(
-                self._from_date, self.dt, self._time_unit))
-            price = price.join(self.get_price_bars(
-                ticker=ticker, bar_size=bar_size)['close']).ffill()
+            price = pd.DataFrame(index=get_datetime_range(self._from_date,self._to_date,self._time_unit))
+            price = price.join(self.get_price_bars(ticker=ticker,bar_size=bar_size)['close']).ffill()
             price = price.join(qty_asset).ffill()
             portfolio[ticker] = (price['close'] * price['qty'])
-        portfolio['cash'] = transactions['cash_flow'].resample(
-            bar_size).agg('sum').ffill()
-        portfolio.fillna(0, inplace=True)
+        portfolio['cash'] = transactions['cash_flow'].resample(bar_size).agg('sum').ffill()
+        portfolio.fillna(0,inplace=True)
         portfolio['cash'] = portfolio['cash'].cumsum()
         portfolio['aum'] = portfolio.sum(axis=1)
         return portfolio

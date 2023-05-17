@@ -29,4 +29,3 @@ class LimitOrder():
 
     def __str__(self):
         return f'<LimitOrder: {self.ticker} {self.qty}@{self.price}>'
-

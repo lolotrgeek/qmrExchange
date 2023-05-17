@@ -4,7 +4,6 @@ from source.OrderBook import OrderBook
 from source.Exchange import Exchange
 from source.Simulator import Simulator
 from source.Agents import RandomMarketTaker, NaiveMarketMaker
-from datetime import datetime
 
 # export all imports
 __all__ = [
@@ -15,5 +14,4 @@ __all__ = [
     'Simulator',
     'RandomMarketTaker',
     'NaiveMarketMaker',
-    'datetime'
 ]
