@@ -3,6 +3,7 @@ from main import *
 import time
 import threading
 from API import API
+# from WebSockets import WebSockets
 
 time_interval = 'minute'
 tickers = ['XYZ']
@@ -17,6 +18,7 @@ mt = RandomMarketTaker(name='market_taker', tickers=tickers, aum=1_000, prob_buy
 sim.add_agent(mt)
 
 app = API(sim)
+# ws = WebSockets(app, sim)
 
 def run_loop(run_event):
     sim.run(run_event)
@@ -27,7 +29,9 @@ def main():
     t1 = threading.Thread(target=run_loop, args=[run_event])
     t1.start()
 
+    # ws.run(app)
     app.run()
+    
 
     try:
         while 1:
