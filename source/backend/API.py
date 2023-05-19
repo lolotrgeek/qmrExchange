@@ -53,9 +53,10 @@ def API(sim):
         ticker = request.args.get('ticker') # this would typically be a hash of a contract address
         if(ticker is None or ticker == ""):
             return jsonify({'message': 'Ticker not found.'})
-        mempool = sim.exchange.mempool.transactions(ticker)
-        if mempool:
-            return jsonify(mempool.transactions)
+        mempool = sim.exchange.blockchain.mempool.transactions
+        #TODO: can also convert to_dict() and jsonify
+        if not mempool.empty:
+            return jsonify(mempool)
         else:
             return jsonify({'message': 'Mempool not found.'})
 

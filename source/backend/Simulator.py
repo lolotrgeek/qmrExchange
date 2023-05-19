@@ -33,7 +33,7 @@ class Simulator():
                 return False
             self.update_datetime()
             if(self.exchange.crypto):
-                self.exchange.mempool.process_transactions()
+                self.exchange.blockchain.process_transactions(self.dt)
             for agent in self.agents:
                 agent.next()
             self.__update_agents_cash()
@@ -82,6 +82,10 @@ class Simulator():
     @property
     def trades(self):
         return self.exchange.trades
+    
+    @property
+    def transactions(self):
+        return self.exchange.blockchain.transactions
 
     # TODO: have cash update at the moment of the transaction
     def __update_agents_cash(self):
@@ -93,7 +97,7 @@ class Simulator():
                 self.agents[agent_idx]._transactions.append({'dt':self.dt,'cash_flow':update['cash_flow'],'ticker':update['ticker'],'qty':update['qty']})
         self.exchange.agents_cash_updates = []
         # look for confirmed transactions in the MemPool and update the agents' cash
-        for transaction in self.exchange.mempool.transactions:
+        for transaction in self.exchange.blockchain.chain:
             if transaction.confirmed:
                 buyer_idx = self.__get_agent_index(transaction.recipient)
                 seller_idx = self.__get_agent_index(transaction.sender)

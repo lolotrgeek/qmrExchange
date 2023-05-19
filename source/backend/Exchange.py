@@ -4,7 +4,7 @@ from .OrderBook import OrderBook
 from .Trade import Trade
 from .LimitOrder import LimitOrder
 from .OrderSide import OrderSide
-from .MemPool import MemPool
+from .Blockchain import Blockchain
 
 class Exchange():
     
@@ -14,7 +14,7 @@ class Exchange():
         self.datetime = datetime
         self.agents_cash_updates = []
         self.crypto = False
-        self.mempool = self.crypto if self.crypto else MemPool()
+        self.blockchain = self.crypto if self.crypto else Blockchain()
 
     def __str__(self):
         return ', '.join(ob for ob in self.books)
@@ -32,8 +32,6 @@ class Exchange():
         self._process_trade(ticker, 1, seed_price, 'init_seed', 'init_seed',)
         self.limit_buy(ticker, seed_price * seed_bid, 1, 'init_seed')
         self.limit_sell(ticker, seed_price * seed_ask, 1, 'init_seed')
-        if(self.crypto):
-            self.mempool.add_transaction(ticker, 0, amount=seed_price, sender='init_seed', recipient='init_seed', dt=self.datetime)
 
     def get_order_book(self, ticker: str) -> OrderBook:
         """Returns the OrderBook of a given Asset
@@ -52,7 +50,7 @@ class Exchange():
         )
 
         if(self.crypto):
-            self.mempool.add_transaction(ticker, fee, amount=qty*price, sender=seller, recipient=buyer, dt=self.datetime)
+            self.blockchain.add_transaction(ticker, fee, amount=qty*price, sender=seller, recipient=buyer, dt=self.datetime)
         else:
             self.agents_cash_updates.extend([
                 {'agent':buyer,'cash_flow':-qty*price,'ticker':ticker,'qty': qty},

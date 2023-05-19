@@ -1,5 +1,6 @@
 import random
 from datetime import datetime
+import pandas as pd
 
 class MempoolTransaction:
     def __init__(self, ticker, fee, amount, sender, recipient, dt=None):
@@ -12,36 +13,32 @@ class MempoolTransaction:
         self.timestamp = None
         self.dt = dt if dt else datetime.now()
 
+    def to_dict(self):
+        return {
+            'ticker': self.ticker,
+            'fee': self.fee,
+            'amount': self.amount,
+            'sender': self.sender,
+            'recipient': self.recipient,
+            'confirmed': self.confirmed,
+            'timestamp': self.timestamp,
+            'dt': self.dt
+        }
+
 
 class MemPool:
     def __init__(self):
         self.transactions = []
-        self.total_transactions = 0
-
-    def add_transaction(self, ticker, fee, amount, sender, recipient, dt):
-        self.total_transactions += 1
-        if (fee == 0):
-            return False
-        mempool_transaction = MempoolTransaction(ticker, fee, amount, sender, recipient, dt)
-        self.transactions.append(mempool_transaction)
-
-    def process_transactions(self):
-        unconfirmed_transactions = self.get_pending_transactions()
-        unconfirmed_transactions.sort(key=lambda x: x.fee, reverse=True)
-        num_unconfirmed = len(unconfirmed_transactions)
-        for index, transaction in enumerate(unconfirmed_transactions):
-            # create a probablity distribution for confirmation based on the length of the mempool
-            confirmation_odds = .9 - (index / num_unconfirmed)
-            if random.random() < confirmation_odds:
-                transaction.confirmed = True
-                num_unconfirmed -= 1        
 
     def get_pending_transactions(self):
         return [transaction for transaction in self.transactions if not transaction.confirmed]
     
     def get_confirmed_transactions(self):
         return [transaction for transaction in self.transactions if transaction.confirmed]
-
+    
+    @property
+    def transaction_log(self):
+        return pd.DataFrame.from_records([t.to_dict() for t in self.transactions]).set_index('dt')
 
 # Example usage
 # mempool = MemPool()

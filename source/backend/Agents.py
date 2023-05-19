@@ -53,10 +53,7 @@ class CryptoMarketMaker(Agent):
 
     def next(self):
         for ticker in self.tickers:
-            if len(self.exchange.mempool.transactions) == 0:
-                fee = .001
-            else:
-                fee = max([transaction.fee for transaction in self.exchange.mempool.transactions])
+            fee = max([transaction.fee for transaction in self.exchange.blockchain.chain]) + .001
             price = self.exchange.get_latest_trade(ticker).price
             self.cancel_all_orders(ticker)
             self.limit_buy(ticker, price * (1-self.spread_pct/2), qty=self.qty_per_order, fee=fee)
@@ -83,13 +80,14 @@ class CryptoMarketTaker(Agent):
         for ticker in self.tickers:
             action = random.choices(
                 ['buy','close',None], weights=[self.prob_buy, self.prob_sell, 1 - self.prob_buy - self.prob_sell])[0]
-            if(len(self.exchange.mempool.transactions) == 0):
-                avg_fee = .001
+            avg_fee = sum([transaction.fee for transaction in self.exchange.blockchain.chain])/len(self.exchange.blockchain.chain)
+            if(avg_fee == 0):
+                fee = .001
             else:
-                avg_fee = sum([transaction.fee for transaction in self.exchange.mempool.transactions])/len(self.exchange.mempool.transactions)
+                fee = avg_fee
             if action == 'buy':
-                self.market_buy(ticker,self.qty_per_order, fee=avg_fee)
+                self.market_buy(ticker,self.qty_per_order, fee=fee)
             elif action == 'close':
-                self.exchange.market_sell(ticker,self.get_position(ticker),self.name, fee=avg_fee)
+                self.exchange.market_sell(ticker,self.get_position(ticker),self.name, fee=fee)
 
             
