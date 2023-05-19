@@ -48,6 +48,17 @@ def API(sim):
         sim.exchange.create_asset(ticker, seed_price, seed_bid, seed_ask)
         return jsonify({'message': 'Asset created successfully.'})
 
+    @app.route('/api/v1/crypto/get_mempool', methods=['GET'])
+    def get_mempool():
+        ticker = request.args.get('ticker') # this would typically be a hash of a contract address
+        if(ticker is None or ticker == ""):
+            return jsonify({'message': 'Ticker not found.'})
+        mempool = sim.exchange.mempool.transactions(ticker)
+        if mempool:
+            return jsonify(mempool.transactions)
+        else:
+            return jsonify({'message': 'Mempool not found.'})
+
     @app.route('/api/v1/get_order_book', methods=['GET'])
     def get_order_book():
         ticker = request.args.get('ticker')
@@ -132,7 +143,8 @@ def API(sim):
         price = data['price']
         qty = data['qty']
         creator = data['creator']
-        order = sim.exchange.limit_buy(ticker, price, qty, creator)
+        fee = data['fee']
+        order = sim.exchange.limit_buy(ticker, price, qty, creator, fee)
         return jsonify(order.to_dict())
 
     @app.route('/api/v1/limit_sell', methods=['POST'])
@@ -142,7 +154,8 @@ def API(sim):
         price = data['price']
         qty = data['qty']
         creator = data['creator']
-        order = sim.exchange.limit_sell(ticker, price, qty, creator)
+        fee = data['fee']
+        order = sim.exchange.limit_sell(ticker, price, qty, creator, fee)
         return jsonify(order.to_dict())
 
     @app.route('/api/v1/cancel_order', methods=['POST'])
@@ -169,7 +182,8 @@ def API(sim):
         ticker = data['ticker']
         qty = data['qty']
         buyer = data['buyer']
-        sim.exchange.market_buy(ticker, qty, buyer)
+        fee = data['fee']
+        sim.exchange.market_buy(ticker, qty, buyer, fee)
         return jsonify({'message': 'Market buy order executed successfully.'})
 
     @app.route('/api/v1/market_sell', methods=['POST'])
@@ -178,7 +192,8 @@ def API(sim):
         ticker = data['ticker']
         qty = data['qty']
         seller = data['seller']
-        sim.exchange.market_sell(ticker, qty, seller)
+        fee = data['fee']
+        sim.exchange.market_sell(ticker, qty, seller, fee)
         return jsonify({'message': 'Market sell order executed successfully.'})
 
     return app

@@ -5,7 +5,7 @@ from ._utils import get_random_string
 
 class LimitOrder():
 
-    def __init__(self, ticker, price, qty, creator, side, dt=None):
+    def __init__(self, ticker, price, qty, creator, side, dt=None, fee=0):
         self.id = get_random_string()
         self.ticker: str = ticker
         self.price: Decimal = price
@@ -13,6 +13,7 @@ class LimitOrder():
         self.qty: int = qty
         self.creator: str = creator
         self.dt: datetime = dt if dt else datetime.now()
+        self.fee = fee
 
     def to_dict(self):
         return {

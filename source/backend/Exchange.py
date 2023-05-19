@@ -4,6 +4,7 @@ from .OrderBook import OrderBook
 from .Trade import Trade
 from .LimitOrder import LimitOrder
 from .OrderSide import OrderSide
+from .MemPool import MemPool
 
 class Exchange():
     
@@ -12,6 +13,8 @@ class Exchange():
         self.trade_log: List[Trade] = []
         self.datetime = datetime
         self.agents_cash_updates = []
+        self.crypto = False
+        self.mempool = self.crypto if self.crypto else MemPool()
 
     def __str__(self):
         return ', '.join(ob for ob in self.books)
@@ -29,7 +32,8 @@ class Exchange():
         self._process_trade(ticker, 1, seed_price, 'init_seed', 'init_seed',)
         self.limit_buy(ticker, seed_price * seed_bid, 1, 'init_seed')
         self.limit_sell(ticker, seed_price * seed_ask, 1, 'init_seed')
-
+        if(self.crypto):
+            self.mempool.add_transaction(ticker, 0, amount=seed_price, sender='init_seed', recipient='init_seed', dt=self.datetime)
 
     def get_order_book(self, ticker: str) -> OrderBook:
         """Returns the OrderBook of a given Asset
@@ -42,17 +46,19 @@ class Exchange():
         """
         return self.books[ticker]
 
-    def _process_trade(self, ticker, qty, price, buyer, seller):
+    def _process_trade(self, ticker, qty, price, buyer, seller, fee=0):
         self.trade_log.append(
             Trade(ticker, qty, price, buyer, seller,self.datetime)
         )
-        self.agents_cash_updates.extend([
-            {'agent':buyer,'cash_flow':-qty*price,'ticker':ticker,'qty': qty},
-            {'agent':seller,'cash_flow':qty*price,'ticker':ticker,'qty': -qty}
-        ])
-        
-    
 
+        if(self.crypto):
+            self.mempool.add_transaction(ticker, fee, amount=qty*price, sender=seller, recipient=buyer, dt=self.datetime)
+        else:
+            self.agents_cash_updates.extend([
+                {'agent':buyer,'cash_flow':-qty*price,'ticker':ticker,'qty': qty},
+                {'agent':seller,'cash_flow':qty*price,'ticker':ticker,'qty': -qty}
+            ])
+        
     def get_latest_trade(self, ticker:str) -> Trade:
         """Retrieves the most recent trade of a given asset
 
@@ -125,7 +131,7 @@ class Exchange():
         quotes = self.get_quotes(ticker)
         return (quotes['bid_p'] + quotes['ask_p']) / 2
 
-    def limit_buy(self, ticker: str, price: float, qty: int, creator: str):
+    def limit_buy(self, ticker: str, price: float, qty: int, creator: str, fee=0):
         price = round(price,2)
         # check if we can match trades before submitting the limit order
         while qty > 0:
@@ -133,7 +139,7 @@ class Exchange():
             if best_ask and price >= best_ask.price:
                 trade_qty = min(qty, best_ask.qty)
                 self._process_trade(ticker, trade_qty,
-                                    best_ask.price, creator, best_ask.creator)
+                                    best_ask.price, creator, best_ask.creator, fee)
                 qty -= trade_qty
                 self.books[ticker].asks[0].qty -= trade_qty
                 self.books[ticker].asks = [
@@ -149,8 +155,7 @@ class Exchange():
         self.books[ticker].bids.insert(queue, new_order)
         return new_order
 
-
-    def limit_sell(self, ticker: str, price: float, qty: int, creator: str):
+    def limit_sell(self, ticker: str, price: float, qty: int, creator: str, fee=0):
         price = round(price,2)
         # check if we can match trades before submitting the limit order
         while qty > 0:
@@ -158,7 +163,7 @@ class Exchange():
             if best_bid and price <= best_bid.price:
                 trade_qty = min(qty, best_bid.qty)
                 self._process_trade(ticker, trade_qty,
-                                    best_bid.price, best_bid.creator, creator)
+                                    best_bid.price, best_bid.creator, creator, fee)
                 qty -= trade_qty
                 self.books[ticker].bids[0].qty -= trade_qty
                 self.books[ticker].bids = [
@@ -192,30 +197,29 @@ class Exchange():
         self.books[ticker].asks = [a for a in self.books[ticker].asks if a.creator != agent]
         return None
 
-    def market_buy(self, ticker: str, qty: int, buyer: str):
+    def market_buy(self, ticker: str, qty: int, buyer: str, fee=0):
         for idx, ask in enumerate(self.books[ticker].asks):
             trade_qty = min(ask.qty, qty)
             self.books[ticker].asks[idx].qty -= trade_qty
             qty -= trade_qty
             self._process_trade(ticker, trade_qty,
-                                ask.price, buyer, ask.creator)
+                                ask.price, buyer, ask.creator, fee)
             if qty == 0:
                 break
         self.books[ticker].asks = [
             ask for ask in self.books[ticker].asks if ask.qty > 0]
 
-    def market_sell(self, ticker: str, qty: int, seller: str):
+    def market_sell(self, ticker: str, qty: int, seller: str, fee=0):
         for idx, bid in enumerate(self.books[ticker].bids):
             trade_qty = min(bid.qty, qty)
             self.books[ticker].bids[idx].qty -= trade_qty
             qty -= trade_qty
             self._process_trade(ticker, trade_qty,
-                                bid.price, bid.creator, seller)
+                                bid.price, bid.creator, seller, fee)
             if qty == 0:
                 break
         self.books[ticker].bids = [
             bid for bid in self.books[ticker].bids if bid.qty > 0]
-
 
     def get_price_bars(self, ticker, bar_size='1D'):
         trades = self.trades
@@ -228,7 +232,6 @@ class Exchange():
     @property
     def trades(self):
         return pd.DataFrame.from_records([t.to_dict() for t in self.trade_log]).set_index('dt')
-
 
     def _set_datetime(self, dt):
         self.datetime = dt

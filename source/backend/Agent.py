@@ -3,12 +3,14 @@ from typing import List, Union
 from .Exchange import Exchange
 from .Trade import Trade
 from .LimitOrder import LimitOrder
+from uuid import uuid4 as UUID
 
 class Agent():
     """The Agent class is the base class for developing different traders that participate in the simulated exchange.
     """
     def __init__(self, name:str, tickers:List[str], aum:int=10_000):
         self.name = name
+        self.id = UUID()
         self.tickers = tickers
         self.exchange:Exchange = None
         self.cash = aum
@@ -85,7 +87,7 @@ class Agent():
     def get_trades(self, ticker):
         return self.exchange.get_trades(ticker)
 
-    def market_buy(self, ticker:str, qty:int):
+    def market_buy(self, ticker:str, qty:int, fee:float):
         """Places a market buy order. The order executes automatically at the best sell price if ask quotes are available.
 
         Args:
@@ -93,9 +95,9 @@ class Agent():
             qty (int): the quantity of the asset to be acquired (in units)
 
         """
-        return self.exchange.market_buy(ticker, qty, self.name)
+        return self.exchange.market_buy(ticker, qty, self.name, fee)
 
-    def market_sell(self, ticker:str, qty:int):
+    def market_sell(self, ticker:str, qty:int, fee:float):
         """Places a market sell order. The order executes automatically at the best buy price if bid quotes are available.
 
         Args:
@@ -103,9 +105,9 @@ class Agent():
             qty (int): the quantity of the asset to be sold (in units)
 
         """
-        return self.exchange.market_sell(ticker, qty, self.name)
+        return self.exchange.market_sell(ticker, qty, self.name, fee)
 
-    def limit_buy(self, ticker:str, price:float, qty:int) -> LimitOrder:
+    def limit_buy(self, ticker:str, price:float, qty:int, fee:float) -> LimitOrder:
         """Creates a limit buy order for a given asset and quantity at a certain price.
 
         Args:
@@ -116,9 +118,9 @@ class Agent():
         Returns:
             LimitOrder
         """
-        return self.exchange.limit_buy(ticker,price,qty,self.name)
+        return self.exchange.limit_buy(ticker,price,qty,self.name, fee)
 
-    def limit_sell(self, ticker:str, price:float, qty:int) -> LimitOrder:
+    def limit_sell(self, ticker:str, price:float, qty:int, fee:float) -> LimitOrder:
         """Creates a limit sell order for a given asset and quantity at a certain price.
 
         Args:
@@ -129,8 +131,7 @@ class Agent():
         Returns:
             LimitOrder
         """
-        return self.exchange.limit_sell(ticker,price,qty,self.name)
-
+        return self.exchange.limit_sell(ticker,price,qty,self.name, fee)
 
     def get_position(self,ticker):
         return sum(t['qty'] for t in self._transactions if t['ticker'] == ticker)
@@ -166,10 +167,8 @@ class Agent():
         """
         self.exchange.cancel_all_orders(self.name,ticker)
 
-
     def get_price_bars(self, bar_size='1D'):
         return  self.exchange.get_price_bars(bar_size)
-
 
     def next(self):  
         pass

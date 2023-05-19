@@ -32,10 +32,13 @@ class Simulator():
                 print(f'dt is str')
                 return False
             self.update_datetime()
+            if(self.exchange.crypto):
+                self.exchange.mempool.process_transactions()
             for agent in self.agents:
                 agent.next()
             self.__update_agents_cash()
-            self.episode += 1
+            if(self._episodes > 0):
+                self.episode += 1
             return True
         except KeyboardInterrupt:
             return False
@@ -80,6 +83,7 @@ class Simulator():
     def trades(self):
         return self.exchange.trades
 
+    # TODO: have cash update at the moment of the transaction
     def __update_agents_cash(self):
         for update in self.exchange.agents_cash_updates:
             agent_idx = self.__get_agent_index(update['agent'])
@@ -88,6 +92,19 @@ class Simulator():
                 self.agents[agent_idx].cash += update['cash_flow']
                 self.agents[agent_idx]._transactions.append({'dt':self.dt,'cash_flow':update['cash_flow'],'ticker':update['ticker'],'qty':update['qty']})
         self.exchange.agents_cash_updates = []
+        # look for confirmed transactions in the MemPool and update the agents' cash
+        for transaction in self.exchange.mempool.transactions:
+            if transaction.confirmed:
+                buyer_idx = self.__get_agent_index(transaction.recipient)
+                seller_idx = self.__get_agent_index(transaction.sender)
+                if(buyer_idx is None or seller_idx is None):
+                    continue
+                buyer = self.agents[buyer_idx]
+                seller = self.agents[seller_idx]
+                buyer.cash -= transaction.amount + transaction.fee
+                seller.cash += transaction.amount
+                buyer._transactions.append({'dt':self.dt,'cash_flow':-(transaction.amount+transaction.fee),'ticker':transaction.ticker,'qty':transaction.amount})
+                seller._transactions.append({'dt':self.dt,'cash_flow':transaction.amount,'ticker':transaction.ticker,'qty':transaction.amount})
 
     def get_agent(self, agent_name):
         return next((d for (index, d) in enumerate(self.agents) if d.name == agent_name), None)

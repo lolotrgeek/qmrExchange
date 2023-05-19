@@ -18,7 +18,7 @@ sim.add_agent(mm)
 mt = RandomMarketTaker(name='market_taker', tickers=tickers, aum=1_000, prob_buy=.2, prob_sell=.2, qty_per_order=1,seed=42)
 sim.add_agent(mt)
 
-app = API(sim)
+app = API(sim) 
 # ws = WebSockets(app, sim)
 
 def run_loop(run_event):
