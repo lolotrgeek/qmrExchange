@@ -42,8 +42,8 @@ class Blockchain():
                 self.chain.append(transaction)
         # self.new_block(self.mempool.get_confirmed_transactions(), hash(self.chain[-1]), dt=self.datetime)
         
-        self.mempool.transactions = self.mempool.get_pending_transactions() 
-
+        self.mempool.transactions = self.mempool.get_pending_transactions() # clear the mempool of confirmed transactions
+    
     @property
     def last_block(self):
         return self.chain[-1]

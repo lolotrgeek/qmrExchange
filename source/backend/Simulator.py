@@ -87,7 +87,6 @@ class Simulator():
     def transactions(self):
         return self.exchange.blockchain.transactions
 
-    # TODO: have cash update at the moment of the transaction
     def __update_agents_cash(self):
         for update in self.exchange.agents_cash_updates:
             agent_idx = self.__get_agent_index(update['agent'])
@@ -105,7 +104,7 @@ class Simulator():
                     continue
                 buyer = self.agents[buyer_idx]
                 seller = self.agents[seller_idx]
-                buyer.cash -= transaction.amount + transaction.fee
+                buyer.cash -= transaction.amount + transaction.fee #NOTE: transaction.fee includes the exchange fee and the network fee
                 seller.cash += transaction.amount
                 buyer._transactions.append({'dt':self.dt,'cash_flow':-(transaction.amount+transaction.fee),'ticker':transaction.ticker,'qty':transaction.amount})
                 seller._transactions.append({'dt':self.dt,'cash_flow':transaction.amount,'ticker':transaction.ticker,'qty':transaction.amount})

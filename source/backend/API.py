@@ -50,7 +50,7 @@ def API(sim):
 
     @app.route('/api/v1/crypto/get_mempool', methods=['GET'])
     def get_mempool():
-        ticker = request.args.get('ticker') # this would typically be a hash of a contract address
+        ticker = request.args.get('ticker') # NOTE: this would typically be a hash of a contract address
         if(ticker is None or ticker == ""):
             return jsonify({'message': 'Ticker not found.'})
         mempool = sim.exchange.blockchain.mempool.transactions
