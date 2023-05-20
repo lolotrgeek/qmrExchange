@@ -50,11 +50,9 @@ class Exchange():
         self.trade_log.append(
             Trade(ticker, qty, price, buyer, seller,self.datetime)
         )
-        #TODO: determine if the order was a maker or taker order:
-        #is taker if the order is matched
-        # is maker if the order is not matched and allowed to post to the order book
-        # then assign fees accordingly
         if(self.crypto):
+            #NOTE: the `fee` is the network fee and the exchange fee since the exchange fee is added to the transaction before it is added to the blockchain
+            # while not how this works, this is makes calulating the overall fee easier for the simulator
             self.blockchain.add_transaction(ticker, fee, amount=qty*price, sender=seller, recipient=buyer, dt=self.datetime)
         else:
             self.agents_cash_updates.extend([
@@ -207,8 +205,8 @@ class Exchange():
             trade_qty = min(ask.qty, qty)
             self.books[ticker].asks[idx].qty -= trade_qty
             qty -= trade_qty
-            self._process_trade(ticker, trade_qty,
-                                ask.price, buyer, ask.creator, fee)
+            taker_fee = self.fees.taker_fee(qty)
+            self._process_trade(ticker, trade_qty,ask.price, buyer, ask.creator, fee=fee+taker_fee)
             if qty == 0:
                 break
         self.books[ticker].asks = [
@@ -219,8 +217,8 @@ class Exchange():
             trade_qty = min(bid.qty, qty)
             self.books[ticker].bids[idx].qty -= trade_qty
             qty -= trade_qty
-            self._process_trade(ticker, trade_qty,
-                                bid.price, bid.creator, seller, fee)
+            taker_fee = self.fees.taker_fee(qty)
+            self._process_trade(ticker, trade_qty,bid.price, bid.creator, seller, fee=fee+taker_fee)
             if qty == 0:
                 break
         self.books[ticker].bids = [
