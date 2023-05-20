@@ -5,6 +5,7 @@ from .Trade import Trade
 from .LimitOrder import LimitOrder
 from .OrderSide import OrderSide
 from .Blockchain import Blockchain
+from .Fees import Fees
 
 class Exchange():
     
@@ -13,6 +14,7 @@ class Exchange():
         self.trade_log: List[Trade] = []
         self.datetime = datetime
         self.agents_cash_updates = []
+        self.fees = Fees()
         self.crypto = False
         self.blockchain = self.crypto if self.crypto else Blockchain()
 
@@ -48,7 +50,10 @@ class Exchange():
         self.trade_log.append(
             Trade(ticker, qty, price, buyer, seller,self.datetime)
         )
-
+        #TODO: determine if the order was a maker or taker order:
+        #is taker if the order is matched
+        # is maker if the order is not matched and allowed to post to the order book
+        # then assign fees accordingly
         if(self.crypto):
             self.blockchain.add_transaction(ticker, fee, amount=qty*price, sender=seller, recipient=buyer, dt=self.datetime)
         else:
@@ -130,18 +135,18 @@ class Exchange():
         return (quotes['bid_p'] + quotes['ask_p']) / 2
 
     def limit_buy(self, ticker: str, price: float, qty: int, creator: str, fee=0):
-        price = round(price,2)
+        if not self.crypto:
+            price = round(price,2)
         # check if we can match trades before submitting the limit order
         while qty > 0:
             best_ask = self.get_best_ask(ticker)
             if best_ask and price >= best_ask.price:
                 trade_qty = min(qty, best_ask.qty)
-                self._process_trade(ticker, trade_qty,
-                                    best_ask.price, creator, best_ask.creator, fee)
+                taker_fee = self.fees.taker_fee(qty)
+                self._process_trade(ticker, trade_qty, best_ask.price, creator, best_ask.creator, fee=fee+taker_fee)
                 qty -= trade_qty
                 self.books[ticker].asks[0].qty -= trade_qty
-                self.books[ticker].asks = [
-                    ask for ask in self.books[ticker].asks if ask.qty > 0]
+                self.books[ticker].asks = [ask for ask in self.books[ticker].asks if ask.qty > 0]
             else:
                 break
         queue = len(self.books[ticker].bids)
@@ -149,23 +154,24 @@ class Exchange():
             if price > order.price:
                 queue = idx
                 break
-        new_order = LimitOrder(ticker, price, qty, creator, OrderSide.BUY, self.datetime)
+        maker_fee = self.fees.maker_fee(qty)
+        new_order = LimitOrder(ticker, price, qty, creator, OrderSide.BUY, self.datetime,fee=fee+maker_fee)
         self.books[ticker].bids.insert(queue, new_order)
         return new_order
 
     def limit_sell(self, ticker: str, price: float, qty: int, creator: str, fee=0):
-        price = round(price,2)
+        if not self.crypto:
+            price = round(price,2)
         # check if we can match trades before submitting the limit order
         while qty > 0:
             best_bid = self.get_best_bid(ticker)
             if best_bid and price <= best_bid.price:
                 trade_qty = min(qty, best_bid.qty)
-                self._process_trade(ticker, trade_qty,
-                                    best_bid.price, best_bid.creator, creator, fee)
+                taker_fee = self.fees.taker_fee(qty)
+                self._process_trade(ticker, trade_qty, best_bid.price, best_bid.creator, creator, fee=fee+taker_fee)
                 qty -= trade_qty
                 self.books[ticker].bids[0].qty -= trade_qty
-                self.books[ticker].bids = [
-                    bid for bid in self.books[ticker].bids if bid.qty > 0]
+                self.books[ticker].bids = [bid for bid in self.books[ticker].bids if bid.qty > 0]
             else:
                 break
         queue = len(self.books[ticker].asks)
@@ -173,7 +179,8 @@ class Exchange():
             if price < order.price:
                 queue = idx
                 break
-        new_order = LimitOrder(ticker, price, qty, creator, OrderSide.SELL, self.datetime)
+        maker_fee = self.fees.maker_fee(qty)
+        new_order = LimitOrder(ticker, price, qty, creator, OrderSide.SELL, self.datetime, fee=fee+maker_fee)
         self.books[ticker].asks.insert(queue, new_order)
         return new_order
 
