@@ -50,15 +50,14 @@ def API(sim):
 
     @app.route('/api/v1/crypto/get_mempool', methods=['GET'])
     def get_mempool():
+        limit = request.args.get('limit', type=int)
         ticker = request.args.get('ticker') # NOTE: this would typically be a hash of a contract address
         if(ticker is None or ticker == ""):
             return jsonify({'message': 'Ticker not found.'})
-        mempool = sim.exchange.blockchain.mempool.transactions
-        #TODO: can also convert to_dict() and jsonify
-        if not mempool.empty:
-            return jsonify(mempool)
-        else:
-            return jsonify({'message': 'Mempool not found.'})
+        if(limit is None):
+            limit = 20
+        mempool = sim.exchange.blockchain.mempool.transaction_log
+        return mempool.head(limit).to_json()
 
     @app.route('/api/v1/get_order_book', methods=['GET'])
     def get_order_book():
