@@ -87,7 +87,7 @@ class Agent():
     def get_trades(self, ticker):
         return self.exchange.get_trades(ticker)
 
-    def market_buy(self, ticker:str, qty:int, fee:float):
+    def market_buy(self, ticker:str, qty:int, fee=0.0):
         """Places a market buy order. The order executes automatically at the best sell price if ask quotes are available.
 
         Args:
@@ -97,7 +97,7 @@ class Agent():
         """
         return self.exchange.market_buy(ticker, qty, self.name, fee)
 
-    def market_sell(self, ticker:str, qty:int, fee:float):
+    def market_sell(self, ticker:str, qty:int, fee=0.0):
         """Places a market sell order. The order executes automatically at the best buy price if bid quotes are available.
 
         Args:
@@ -107,7 +107,7 @@ class Agent():
         """
         return self.exchange.market_sell(ticker, qty, self.name, fee)
 
-    def limit_buy(self, ticker:str, price:float, qty:int, fee:float) -> LimitOrder:
+    def limit_buy(self, ticker:str, price:float, qty:int, fee=0.0) -> LimitOrder:
         """Creates a limit buy order for a given asset and quantity at a certain price.
 
         Args:
@@ -120,7 +120,7 @@ class Agent():
         """
         return self.exchange.limit_buy(ticker,price,qty,self.name, fee)
 
-    def limit_sell(self, ticker:str, price:float, qty:int, fee:float) -> LimitOrder:
+    def limit_sell(self, ticker:str, price:float, qty:int, fee=0.0) -> LimitOrder:
         """Creates a limit sell order for a given asset and quantity at a certain price.
 
         Args:
