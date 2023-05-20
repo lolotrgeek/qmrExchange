@@ -141,6 +141,7 @@ class Exchange():
             if best_ask and price >= best_ask.price:
                 trade_qty = min(qty, best_ask.qty)
                 taker_fee = self.fees.taker_fee(qty)
+                self.fees.total_fee_revenue += taker_fee
                 self._process_trade(ticker, trade_qty, best_ask.price, creator, best_ask.creator, fee=fee+taker_fee)
                 qty -= trade_qty
                 self.books[ticker].asks[0].qty -= trade_qty
@@ -153,6 +154,7 @@ class Exchange():
                 queue = idx
                 break
         maker_fee = self.fees.maker_fee(qty)
+        self.fees.total_fee_revenue += maker_fee
         new_order = LimitOrder(ticker, price, qty, creator, OrderSide.BUY, self.datetime,fee=fee+maker_fee)
         self.books[ticker].bids.insert(queue, new_order)
         return new_order
@@ -166,6 +168,7 @@ class Exchange():
             if best_bid and price <= best_bid.price:
                 trade_qty = min(qty, best_bid.qty)
                 taker_fee = self.fees.taker_fee(qty)
+                self.fees.total_fee_revenue += taker_fee
                 self._process_trade(ticker, trade_qty, best_bid.price, best_bid.creator, creator, fee=fee+taker_fee)
                 qty -= trade_qty
                 self.books[ticker].bids[0].qty -= trade_qty
@@ -178,6 +181,7 @@ class Exchange():
                 queue = idx
                 break
         maker_fee = self.fees.maker_fee(qty)
+        self.fees.total_fee_revenue += maker_fee
         new_order = LimitOrder(ticker, price, qty, creator, OrderSide.SELL, self.datetime, fee=fee+maker_fee)
         self.books[ticker].asks.insert(queue, new_order)
         return new_order
@@ -206,6 +210,7 @@ class Exchange():
             self.books[ticker].asks[idx].qty -= trade_qty
             qty -= trade_qty
             taker_fee = self.fees.taker_fee(qty)
+            self.fees.total_fee_revenue += taker_fee
             self._process_trade(ticker, trade_qty,ask.price, buyer, ask.creator, fee=fee+taker_fee)
             if qty == 0:
                 break
@@ -218,6 +223,7 @@ class Exchange():
             self.books[ticker].bids[idx].qty -= trade_qty
             qty -= trade_qty
             taker_fee = self.fees.taker_fee(qty)
+            self.fees.total_fee_revenue += taker_fee
             self._process_trade(ticker, trade_qty,bid.price, bid.creator, seller, fee=fee+taker_fee)
             if qty == 0:
                 break
