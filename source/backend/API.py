@@ -6,6 +6,10 @@ def API(sim):
     @app.route('/')
     def index():
         return "hello"
+    
+    @app.route('/api/v1/sim_time', methods=['GET'])
+    def get_sim_time():
+        return jsonify({'sim_time': sim.dt, 'episode': sim.episode, 'episodes': sim._episodes})
 
     @app.route('/api/v1/candles', methods=['GET'])
     def candles():
