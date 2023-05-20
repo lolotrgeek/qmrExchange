@@ -38,7 +38,10 @@ class MemPool:
     
     @property
     def transaction_log(self):
-        return pd.DataFrame.from_records([t.to_dict() for t in self.transactions]).set_index('dt')
+        if(len(self.transactions) == 0):
+            return pd.DataFrame()
+        else:
+            return pd.DataFrame.from_records([t.to_dict() for t in self.transactions]).set_index('dt')
 
 # Example usage
 # mempool = MemPool()
