@@ -5,7 +5,8 @@ from .Agent import Agent
 from ._utils import get_datetime_range, get_timedelta, get_pandas_time
 
 class Simulator():
-    def __init__(self, from_date=datetime(2022,1,1), time_unit='day', episodes=0):
+    #NOTE: we are choosing the 1700 as year because it is the furthest year that pandas will resample
+    def __init__(self, from_date=datetime(1700,1,1), time_unit='day', episodes=0):
         self.timeDelta = get_timedelta(time_unit)
         self.dt = from_date
         self.agents = []

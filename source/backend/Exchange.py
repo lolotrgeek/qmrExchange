@@ -16,7 +16,7 @@ class Exchange():
         self.agents_cash_updates = []
         self.fees = Fees()
         self.crypto = False
-        self.blockchain = self.crypto if self.crypto else Blockchain()
+        self.blockchain = self.crypto if self.crypto else Blockchain(datetime=datetime)
 
     def __str__(self):
         return ', '.join(ob for ob in self.books)
