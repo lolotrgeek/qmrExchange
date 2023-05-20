@@ -9,6 +9,7 @@ from .API import API
 time_interval = 'minute'
 tickers = ['XYZ']
 sim = Simulator(time_unit=time_interval)
+sim.exchange.crypto = True
 sim.exchange.create_asset(tickers[0])
 
 #TODO: have agents run in separate processes and connect via API
