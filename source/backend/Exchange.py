@@ -87,6 +87,11 @@ class Exchange():
         # TODO: check if corresponding quotes exist in order to avoid exceptions
         best_bid = self.books[ticker].bids[0]
         best_ask = self.books[ticker].asks[0]
+
+        if best_bid == None or best_ask == None:
+            best_bid = LimitOrder(ticker, 0, 0, 'null_quote', OrderSide.BUY, self.datetime)
+            best_ask = LimitOrder(ticker, 0, 0, 'null_quote', OrderSide.SELL, self.datetime)
+        
         quotes = {
             'ticker': ticker,
             'bid_qty': best_bid.qty,
@@ -95,6 +100,7 @@ class Exchange():
             'ask_p': best_ask.price,
         }
         return quotes
+
 
     def get_best_bid(self, ticker:str) -> LimitOrder:
         """retrieves the current best bid in the orderbook of an asset
