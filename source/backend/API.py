@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, request
+from ._utils import format_dataframe_rows_to_dict
 
 def API(sim):
     app = Flask(__name__)
@@ -70,7 +71,7 @@ def API(sim):
             return jsonify({'message': 'Ticker not found.'})
         order_book = sim.exchange.get_order_book(ticker)
         if order_book:
-            return jsonify({"bids": order_book.df['bids'].to_dict(), "asks": order_book.df['asks'].to_dict()})
+            return jsonify({"bids": format_dataframe_rows_to_dict(order_book.df['bids']), "asks":  format_dataframe_rows_to_dict(order_book.df['asks'])})
         else:
             return jsonify({'message': 'Order book not found.'})
 
@@ -93,9 +94,10 @@ def API(sim):
             return jsonify({'message': 'Ticker not found.'})
         if(limit is None):
             limit = 20
-        trades = sim.exchange.get_trades(ticker)
+        trades = sim.exchange.get_trades(ticker).head(limit)
+        format_trades = format_dataframe_rows_to_dict(trades)
         if not trades.empty:
-            return trades.head(limit).to_json()
+            return jsonify(format_trades)
         else:
             return jsonify({'message': 'No trades available.'})
 

@@ -90,4 +90,33 @@ class CryptoMarketTaker(Agent):
             elif action == 'close':
                 self.exchange.market_sell(ticker,self.get_position(ticker),self.name, fee=fee)
 
-            
+class RemoteTrader(Agent):
+    def __init__(self,name,tickers, aum=10_000,prob_buy=.2,prob_sell=.2,qty_per_order=1,seed=None):
+        Agent.__init__(self, name, tickers, aum)
+        if  prob_buy + prob_sell> 1:
+            raise ValueError("Sum of probabilities cannot be greater than 1.") 
+        self.prob_buy = prob_buy
+        self.prob_sell = prob_sell
+        self.qty_per_order = qty_per_order
+        self.tickers
+        self.aum = aum
+
+        # Allows for setting a different independent seed to each instance
+        self.random = random
+        if seed is not None:
+            self.random.seed = seed
+
+    
+    def next(self):
+        for ticker in self.tickers:
+            action = random.choices(
+                ['buy','close',None], weights=[self.prob_buy, self.prob_sell, 1 - self.prob_buy - self.prob_sell])[0]
+            avg_fee = sum([transaction.fee for transaction in self.exchange.blockchain.chain])/len(self.exchange.blockchain.chain)
+            if(avg_fee == 0):
+                fee = .001
+            else:
+                fee = avg_fee
+            if action == 'buy':
+                self.market_buy(ticker,self.qty_per_order, fee=fee)
+            elif action == 'close':
+                self.exchange.market_sell(ticker,self.get_position(ticker),self.name, fee=fee)
