@@ -55,17 +55,6 @@ class Agent():
             LimitOrder: the current best limit sell order
         """
         return self.exchange.get_best_ask(ticker)
-    
-    def get_latest_trade(self, ticker:str) -> Trade:
-        """Returns the latest trade of a given asset
-
-        Args:
-            ticker (str): the ticker of the asset
-
-        Returns:
-            Trade: the latest trade of the asset
-        """
-        return self.exchange.get_latest_trade(ticker)
         
     def get_midprice(self, ticker:str) -> float:
         """Returns the current midprice of the best bid and ask orders in the orderbook of an asset
