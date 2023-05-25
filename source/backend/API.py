@@ -1,9 +1,10 @@
 from flask import Flask, jsonify, request
 from .Requests import Requests
+import flask_monitoringdashboard as dashboard
 
 def API(conn):
     app = Flask(__name__)
-
+    dashboard.bind(app)
     reqs = Requests(conn)
 
     @app.route('/')
