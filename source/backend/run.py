@@ -33,7 +33,7 @@ def run_loop(queue, conn):
 def main():
     ctx = mp.get_context('spawn')
     q = ctx.Queue()
-    p1_conn, p2_conn = mp.Pipe()
+    p1_conn, p2_conn = mp.Pipe(duplex=True)
     p1 = ctx.Process(target=run_loop, args=(q,p1_conn))
     p2 = ctx.Process(target=run_app, args=(q,p2_conn))
 
