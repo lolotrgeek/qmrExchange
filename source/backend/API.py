@@ -140,7 +140,6 @@ def API(conn):
         if(ticker is None or ticker == ""):
             return jsonify({'message': 'Ticker not found.'})
         midprice = reqs.get_midprice(ticker)
-        print(midprice)
         if 'error' not in midprice:
             return jsonify(midprice)
         else:
