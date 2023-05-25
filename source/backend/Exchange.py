@@ -83,15 +83,15 @@ class Exchange():
         return pd.DataFrame.from_records([t.to_dict() for t in self.trade_log if t.ticker == ticker]).set_index('dt').sort_index()
 
     def get_quotes(self, ticker):
-        # TODO: if more than one order has the best price, add the quantities.
-        # TODO: check if corresponding quotes exist in order to avoid exceptions
-        best_bid = self.books[ticker].bids[0]
-        best_ask = self.books[ticker].asks[0]
-
-        if best_bid == None or best_ask == None:
+        try:
+            # TODO: if more than one order has the best price, add the quantities.
+            # TODO: check if corresponding quotes exist in order to avoid exceptions
+            best_bid = self.books[ticker].bids[0]
+            best_ask = self.books[ticker].asks[0]
+        except IndexError :
             best_bid = LimitOrder(ticker, 0, 0, 'null_quote', OrderSide.BUY, self.datetime)
             best_ask = LimitOrder(ticker, 0, 0, 'null_quote', OrderSide.SELL, self.datetime)
-        
+
         quotes = {
             'ticker': ticker,
             'bid_qty': best_bid.qty,

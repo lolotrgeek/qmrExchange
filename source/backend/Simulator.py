@@ -2,6 +2,7 @@ import pandas as pd
 from datetime import datetime
 from .Exchange import Exchange
 from .Agent import Agent
+from .Responses import Responses
 from ._utils import get_datetime_range, get_timedelta, get_pandas_time
 
 class Simulator():
@@ -11,6 +12,7 @@ class Simulator():
         self.dt = from_date
         self.agents = []
         self.exchange = Exchange(datetime=from_date)
+        self.responses = None
         self._from_date = from_date
         self._time_unit = time_unit
         self._episodes = episodes
@@ -40,17 +42,22 @@ class Simulator():
             self.__update_agents_cash()
             if(self._episodes > 0):
                 self.episode += 1
+
+            if(self.responses != None):
+                self.responses.run()
+            
             return True
         except KeyboardInterrupt:
             return False
         
-    def run(self, run_event=None):
-        if(run_event == None):
+    def run(self, conn=None):
+        if(conn == None):
             while True:
                 if not self.next():
                     break
         else:
-            while True and run_event.is_set():
+            self.responses = Responses(self, conn)
+            while True:
                 if not self.next():
                     break
 
