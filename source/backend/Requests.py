@@ -1,95 +1,80 @@
+from time import sleep
 
 class Requests():
     def __init__(self, conn) -> None:
         self.conn = conn
+        self.timeout = 5
+        self.max_tries = 5
+
+    def make_request(self, request, key:str, tries=0):
+        if tries >= self.max_tries:
+            error = {}
+            error[key] = {'error': 'Max tries reached.'}
+            return error
+        self.conn.send(request)
+        if(self.conn.poll(self.timeout)):
+            try:
+                msg = self.conn.recv()
+                if msg is None or 'error' in msg or msg[key] is None or 'error' in msg[key]:
+                    raise Exception('Error.')
+                else:
+                    return msg[key]
+            except:
+                tries += 1
+                sleep(0.1)
+                self.make_request(request, key, tries)
+        else:
+            error = {}
+            error[key] = {'error': 'Timeout.'}
+            return error
 
     def get_sim_time(self):
-        self.conn.send({'get_sim_time': True})
-        msg = self.conn.recv()
-        return msg['sim_time']
+        return self.make_request({'get_sim_time': True}, 'sim_time')
     
     def get_candles(self, ticker, interval, limit):
-        self.conn.send({'get_candles': {'ticker': ticker, 'interval': interval, 'limit': limit}})
-        msg = self.conn.recv()
-        return msg['candles']
+        return self.make_request({'get_candles': {'ticker': ticker, 'interval': interval, 'limit': limit}}, 'candles')
 
     def create_asset(self, ticker, seed_price, seed_bid, seed_ask):
-        self.conn.send({'create_asset': {'ticker': ticker, 'seed_price': seed_price, 'seed_bid': seed_bid, 'seed_ask': seed_ask}})
-        msg = self.conn.recv()
-        return msg['created_asset']
+        return self.make_request({'create_asset': {'ticker': ticker, 'seed_price': seed_price, 'seed_bid': seed_bid, 'seed_ask': seed_ask}}, 'created_asset')
 
     def get_mempool(self, limit):
-        self.conn.send({'get_mempool': {'limit': limit}})
-        msg = self.conn.recv()
-        return msg['mempool']
+        return self.make_request({'get_mempool': {'limit': limit}}, 'mempool')
 
     def get_order_book(self, ticker):
-        self.conn.send({'get_order_book': {'ticker': ticker}})
-        msg = self.conn.recv()
-        return msg['order_book']
+        return self.make_request({'get_order_book': {'ticker': ticker}}, 'order_book')
 
     def get_latest_trade(self, ticker):
-        self.conn.send({'get_latest_trade': {'ticker': ticker}})
-        msg = self.conn.recv()
-        return msg['latest_trade']
+        return self.make_request({'get_latest_trade': {'ticker': ticker}}, 'latest_trade')
 
     def get_trades(self, ticker, limit):
-        self.conn.send({'get_trades': {'ticker': ticker, 'limit': limit}})
-        msg = self.conn.recv()
-        return msg['trades']
+        return self.make_request({'get_trades': {'ticker': ticker, 'limit': limit}}, 'trades')
 
     def get_quotes(self, ticker):
-        self.conn.send({'get_quotes': {'ticker': ticker}})
-        msg = self.conn.recv()
-        return msg['quotes']
+        return self.make_request({'get_quotes': {'ticker': ticker}}, 'quotes')
 
     def get_best_bid(self, ticker):
-        self.conn.send({'get_best_bid': {'ticker': ticker}})
-        msg = self.conn.recv()
-        return msg['best_bid']
+        return self.make_request({'get_best_bid': {'ticker': ticker}}, 'best_bid')
 
     def get_best_ask(self, ticker):
-        self.conn.send({'get_best_ask': {'ticker': ticker}})
-        msg = self.conn.recv()
-        return msg['best_ask']
+        return self.make_request({'get_best_ask': {'ticker': ticker}}, 'best_ask')
 
     def get_midprice(self, ticker):
-        self.conn.send({'get_midprice': {'ticker': ticker}})
-        msg = self.conn.recv()
-        return msg
+        return self.make_request({'get_midprice': {'ticker': ticker}}, 'midprice')
 
     def limit_buy(self, ticker, price, quantity, creator, fee):
-        self.conn.send({'limit_buy': {'ticker': ticker, 'price': price, 'qty': quantity, 'creator': creator, 'fee': fee}})
-        msg = self.conn.recv()
-        return msg['limit_buy_placed']
+        return self.make_request({'limit_buy': {'ticker': ticker, 'price': price, 'qty': quantity, 'creator': creator, 'fee': fee}}, 'limit_buy_placed') 
 
     def limit_sell(self, ticker, price, quantity, creator, fee):
-        self.conn.send({'limit_sell': {'ticker': ticker, 'price': price, 'qty': quantity, 'creator': creator, 'fee': fee}})
-        msg = self.conn.recv()
-        return msg['limit_sell_placed']
+        return self.make_request({'limit_sell': {'ticker': ticker, 'price': price, 'qty': quantity, 'creator': creator, 'fee': fee}}, 'limit_sell_placed')
     
     def cancel_order(self, order_id):
-        self.conn.send({'cancel_order': {'order_id': order_id}})
-        msg = self.conn.recv()
-        return msg['order_cancelled']
+        return self.make_request({'cancel_order': {'order_id': order_id}}, 'order_cancelled')
 
     def cancel_all_orders(self, ticker, agent):
-        self.conn.send({'cancel_all_orders': {'ticker': ticker, 'agent': agent}})
-        msg = self.conn.recv()
-        return msg['orders_cancelled']
+        return self.make_request({'cancel_all_orders': {'ticker': ticker, 'agent': agent}}, 'orders_cancelled')
 
     def market_buy(self, ticker, quantity, creator, fee):
-        self.conn.send({'market_buy': {'ticker': ticker, 'qty': quantity, 'buyer': creator, 'fee': fee}})
-        msg = self.conn.recv()
-        return msg['market_buy_placed']
-
+        return self.make_request({'market_buy': {'ticker': ticker, 'qty': quantity, 'buyer': creator, 'fee': fee}}, 'market_buy_placed')
+    
     def market_sell(self, ticker, quantity, creator, fee):
-        self.conn.send({'market_sell': {'ticker': ticker, 'qty': quantity, 'seller': creator, 'fee': fee}})
-        msg = self.conn.recv()
-        return msg['market_sell_placed']
-
-
-
-    
-
-    
+        return self.make_request({'market_sell': {'ticker': ticker, 'qty': quantity, 'seller': creator, 'fee': fee}}, 'market_sell_placed')

@@ -161,3 +161,5 @@ cython_debug/
 
 local_ignore/
 doc_maker_master.py
+source/backend/API.py
+flask_monitoringdashboard.db

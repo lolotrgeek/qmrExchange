@@ -79,7 +79,7 @@ class Responses():
         elif ('get_midprice' in msg):
             midprice = self.sim.exchange.get_midprice(msg['get_midprice']['ticker'])
             if midprice is not None:
-                self.conn.send({'midprice': midprice})
+                self.conn.send({'midprice': {"midprice": midprice}})
             else:
                 self.conn.send({'midprice': {"error": {'No midprice available.'}}})
 
