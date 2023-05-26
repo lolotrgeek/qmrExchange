@@ -1,7 +1,7 @@
 from time import sleep
 
 class Requests():
-    def __init__(self, conn) -> None:
+    def __init__(self, conn):
         self.conn = conn
         self.timeout = 5
         self.max_tries = 5
@@ -15,14 +15,19 @@ class Requests():
         if(self.conn.poll(self.timeout)):
             try:
                 msg = self.conn.recv()
-                if msg is None or 'error' in msg or msg[key] is None or 'error' in msg[key]:
+                if msg is None or 'error' in msg:
+                    print('None', msg)
+                    raise Exception('Error.')
+                elif msg[key] is None or 'error' in msg[key]:
+                    print('None', msg[key])
                     raise Exception('Error.')
                 else:
+                    print(f'key {key} found.')
                     return msg[key]
             except:
                 tries += 1
                 sleep(0.1)
-                self.make_request(request, key, tries)
+                return self.make_request(request, key, tries)
         else:
             error = {}
             error[key] = {'error': 'Timeout.'}
