@@ -4,21 +4,6 @@ import flask_monitoringdashboard as dashboard
 from time import sleep
 
 
-def handle_call(call, name="", to_json=True):
-    try:
-        if call is None:
-            print(name, call)
-            # TODO: the dict is being generated but this gets recieved as None...
-            return jsonify({'message': 'Call not found.'})
-        elif 'error' in call:
-            return jsonify({'message': 'Error.'})
-        elif to_json == True:
-            return jsonify(call)
-    except:
-        return False
-
-
-
 def API(conn):
     app = Flask(__name__)
     dashboard.bind(app)
@@ -28,6 +13,7 @@ def API(conn):
     max_tries = 5
 
     def make_request(request, key:str, tries=0):
+        sleep(0.1)
         if tries >= max_tries:
             error = {}
             error[key] = {'error': 'Max tries reached.'}
@@ -45,9 +31,9 @@ def API(conn):
                 else:
                     print(f'key {key} found.')
                     return msg[key]
-            except:
+            except Exception as e:
+                print("Error", e)
                 tries += 1
-                sleep(0.1)
                 return make_request(request, key, tries)
         else:
             error = {}
