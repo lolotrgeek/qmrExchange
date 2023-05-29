@@ -11,7 +11,7 @@ class Requests():
             error = {}
             error[key] = {'error': 'Max tries reached.'}
             return error
-        self.conn.send(request)
+        self.conn.put(request)
         if(self.conn.poll(self.timeout)):
             try:
                 msg = self.conn.recv()

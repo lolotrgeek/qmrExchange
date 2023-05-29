@@ -33,10 +33,8 @@ def main():
     ctx = mp.get_context('spawn')
     state = ctx.Queue()
 
-    p1_conn, p2_conn = mp.Pipe(duplex=True)
-
-    p1 = ctx.Process(target=run_loop, args=(p1_conn, ))
-    p2 = ctx.Process(target=run_app, args=(p2_conn, ))
+    p1 = ctx.Process(target=run_loop, args=(state, ))
+    p2 = ctx.Process(target=run_app, args=(state, ))
 
     p1.start()
     p2.start()
@@ -48,8 +46,6 @@ def main():
             time.sleep(.1)
     except KeyboardInterrupt:
         print("attempting to close processes..." )
-        p1_conn.close()
-        p2_conn.close()
         p1.join()
         p2.join()
         print("processes successfully closed")

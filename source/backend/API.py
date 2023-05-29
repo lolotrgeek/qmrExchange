@@ -2,14 +2,13 @@ from flask import Flask, jsonify, request
 from .Requests import Requests
 import flask_monitoringdashboard as dashboard
 from time import sleep
-
+import traceback
 
 def API(conn):
     app = Flask(__name__)
     dashboard.bind(app)
     reqs = Requests(conn)
 
-    timeout = 5
     max_tries = 5
 
     def make_request(request, key:str, tries=0):
@@ -18,27 +17,25 @@ def API(conn):
             error = {}
             error[key] = {'error': 'Max tries reached.'}
             return error
-        conn.send(request)
-        if(conn.poll(timeout)):
-            try:
-                msg = conn.recv()
-                if msg is None or 'error' in msg:
-                    print('None', msg)
-                    raise Exception('Error.')
-                elif msg[key] is None or 'error' in msg[key]:
-                    print('None', msg[key])
-                    raise Exception('Error.')
-                else:
-                    print(f'key {key} found.')
-                    return msg[key]
-            except Exception as e:
-                print("Error", e)
-                tries += 1
-                return make_request(request, key, tries)
-        else:
-            error = {}
-            error[key] = {'error': 'Timeout.'}
-            return error
+        conn.put(request)
+        try:
+            msg = conn.get()
+            if msg is None or 'error' in msg:
+                print('None', msg)
+                raise Exception('Waiting...')
+            elif type(msg) is not dict:
+                raise Exception('Waiting...')
+            elif msg.get(key) is None:
+                raise Exception('Waiting...')
+            else:
+                return msg[key]
+        except Exception as e:
+            if e != 'Waiting...':
+                print(f"API Error {key}:", e)
+                traceback.print_exc()
+            tries += 1
+            return make_request(request, key, tries)
+
 
     @app.route('/')
     def index():
