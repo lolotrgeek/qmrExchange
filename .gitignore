@@ -163,3 +163,4 @@ local_ignore/
 doc_maker_master.py
 source/backend/API.py
 flask_monitoringdashboard.db
+flask_monitoringdashboard.db-journal

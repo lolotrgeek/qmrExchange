@@ -2,6 +2,32 @@ const http = require('http')
 
 const base = 'http://localhost:5000/api/v1'
 
+count = 0
+
+let functions = [
+    get_latest_trade,
+    get_best_bid,
+    get_best_ask,
+    get_midprice,
+    get_order_book,
+    get_quotes,
+    get_trades
+]
+
+function responses() {
+    const start = Date.now()
+    let runs = 100
+    let run = 0
+    while (run < runs) {
+        if(run >= runs) break
+        run += 1
+        setTimeout(() => {
+            functions[Math.floor(Math.random() * functions.length)]()
+        }, 100)
+    }
+    const end = Date.now()
+    console.log(count, end - start)
+}
 
 // make get request to api
 function make_request(url) {
@@ -13,7 +39,8 @@ function make_request(url) {
 
         response.on('end', () => {
             const profile = JSON.parse(body)
-            console.log(url, profile)
+            // console.log(url, profile)
+            count += 1
         })
     }
     )
@@ -56,10 +83,4 @@ function get_trades(ticker='XYZ') {
 }
 
 
-get_latest_trade()
-get_best_bid()
-get_best_ask()
-get_midprice()
-get_order_book()
-get_quotes()
-get_trades()
+responses()
