@@ -21,7 +21,6 @@ def API(conn):
         try:
             msg = conn.get()
             if msg is None or 'error' in msg:
-                print('None', msg)
                 raise Exception('Waiting...')
             elif type(msg) is not dict:
                 raise Exception('Waiting...')
