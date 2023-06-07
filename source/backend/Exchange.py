@@ -7,9 +7,10 @@ from .OrderSide import OrderSide
 from .Blockchain import Blockchain
 from .Fees import Fees
 
+# Creates an Orderbook and Assets
 class Exchange():
-    
     def __init__(self, datetime= None):
+        self.agents = []
         self.books = {}
         self.trade_log: List[Trade] = []
         self.datetime = datetime
@@ -35,17 +36,6 @@ class Exchange():
         self.limit_buy(ticker, seed_price * seed_bid, 1, 'init_seed')
         self.limit_sell(ticker, seed_price * seed_ask, 1, 'init_seed')
 
-    def get_order_book(self, ticker: str) -> OrderBook:
-        """Returns the OrderBook of a given Asset
-
-        Args:
-            ticker (str): the ticker of the asset
-
-        Returns:
-            OrderBook: the orderbook of the asset.
-        """
-        return self.books[ticker]
-
     def _process_trade(self, ticker, qty, price, buyer, seller, fee=0):
         self.trade_log.append(
             Trade(ticker, qty, price, buyer, seller,self.datetime)
@@ -54,89 +44,14 @@ class Exchange():
             #NOTE: the `fee` is the network fee and the exchange fee since the exchange fee is added to the transaction before it is added to the blockchain
             # while not how this works, this is makes calulating the overall fee easier for the simulator
             self.blockchain.add_transaction(ticker, fee, amount=qty*price, sender=seller, recipient=buyer, dt=self.datetime)
+            self.__update_agents_currency(self.blockchain.mempool.transactions[-1])
         else:
-            self.agents_cash_updates.extend([
+            transaction = [
                 {'agent':buyer,'cash_flow':-qty*price,'ticker':ticker,'qty': qty},
                 {'agent':seller,'cash_flow':qty*price,'ticker':ticker,'qty': -qty}
-            ])
-        
-    def get_latest_trade(self, ticker:str) -> Trade:
-        """Retrieves the most recent trade of a given asset
-
-        Args:
-            ticker (str): the ticker of the trade
-
-        Returns:
-            Trade
-        """
-        return next(trade for trade in self.trade_log[::-1] if trade.ticker == ticker)
-
-    def get_trades(self, ticker:str) -> pd.DataFrame:
-        """Retrieves all past trades of a given asset
-
-        Args:
-            ticker (str): the ticker of the asset
-
-        Returns:
-            pd.DataFrame: a dataframe containing all trades
-        """
-        return pd.DataFrame.from_records([t.to_dict() for t in self.trade_log if t.ticker == ticker]).set_index('dt').sort_index()
-
-    def get_quotes(self, ticker):
-        try:
-            # TODO: if more than one order has the best price, add the quantities.
-            # TODO: check if corresponding quotes exist in order to avoid exceptions
-            best_bid = self.books[ticker].bids[0]
-            best_ask = self.books[ticker].asks[0]
-        except IndexError :
-            best_bid = LimitOrder(ticker, 0, 0, 'null_quote', OrderSide.BUY, self.datetime)
-            best_ask = LimitOrder(ticker, 0, 0, 'null_quote', OrderSide.SELL, self.datetime)
-
-        quotes = {
-            'ticker': ticker,
-            'bid_qty': best_bid.qty,
-            'bid_p': best_bid.price,
-            'ask_qty': best_ask.qty,
-            'ask_p': best_ask.price,
-        }
-        return quotes
-
-
-    def get_best_bid(self, ticker:str) -> LimitOrder:
-        """retrieves the current best bid in the orderbook of an asset
-
-        Args:
-            ticker (str): the ticker of the asset.
-
-        Returns:
-            LimitOrder
-        """
-        if self.books[ticker].bids:
-            return self.books[ticker].bids[0]
-
-    def get_best_ask(self, ticker:str) -> LimitOrder:
-        """retrieves the current best ask in the orderbook of an asset
-
-        Args:
-            ticker (str): the ticker of the asset.
-
-        Returns:
-            LimitOrder
-        """
-        if self.books[ticker].asks:
-            return self.books[ticker].asks[0]
-
-    def get_midprice(self, ticker:str) -> float:
-        """Returns the current midprice of the best bid and ask quotes.
-
-        Args:
-            ticker (str): the ticker of the asset
-
-        Returns:
-            float: the current midprice
-        """
-        quotes = self.get_quotes(ticker)
-        return (quotes['bid_p'] + quotes['ask_p']) / 2
+            ]
+            # self.agents_cash_updates.extend(transaction)
+            self.__update_agents_cash(transaction)
 
     def limit_buy(self, ticker: str, price: float, qty: int, creator: str, fee=0):
         if not self.crypto:
@@ -236,17 +151,42 @@ class Exchange():
         self.books[ticker].bids = [
             bid for bid in self.books[ticker].bids if bid.qty > 0]
 
-    def get_price_bars(self, ticker, bar_size='1D'):
-        trades = self.trades
-        trades = trades[trades['ticker']== ticker]
-        df = trades.resample(bar_size).agg({'price': 'ohlc', 'qty': 'sum'})
-        df.columns = df.columns.droplevel()
-        df.rename(columns={'qty':'volume'},inplace=True)
-        return df
-
     @property
     def trades(self):
         return pd.DataFrame.from_records([t.to_dict() for t in self.trade_log]).set_index('dt')
 
     def _set_datetime(self, dt):
         self.datetime = dt
+
+    def register_agent(self, name, initial_cash):
+        self.agents.append({'name':name,'cash':initial_cash,'_transactions':[]})
+
+    def get_cash(self, agent):
+        return self.get_agent(agent).cash
+    
+    def __update_agents_cash(self, transaction):
+        for side in transaction:
+            agent_idx = self.__get_agent_index(side['agent'])
+            if agent_idx is not None:
+                self.agents[agent_idx].cash += side['cash_flow']
+                self.agents[agent_idx]._transactions.append({'dt':self.dt,'cash_flow':side['cash_flow'],'ticker':side['ticker'],'qty':side['qty']})
+
+    def __update_agents_currency(self, transaction):
+        if transaction.confirmed:
+            buyer_idx = self.__get_agent_index(transaction.recipient)
+            seller_idx = self.__get_agent_index(transaction.sender)
+            if(buyer_idx is None or seller_idx is None):
+                return
+            buyer = self.agents[buyer_idx]
+            seller = self.agents[seller_idx]
+            #TODO: have cash be an asset that is some currency
+            buyer.cash -= transaction.amount + transaction.fee #NOTE: transaction.fee includes the exchange fee and the network fee
+            seller.cash += transaction.amount
+            buyer._transactions.append({'dt':self.dt,'cash_flow':-(transaction.amount+transaction.fee),'ticker':transaction.ticker,'qty':transaction.amount})
+            seller._transactions.append({'dt':self.dt,'cash_flow':transaction.amount,'ticker':transaction.ticker,'qty':transaction.amount})
+
+    def get_agent(self, agent_name):
+        return next((d for (index, d) in enumerate(self.agents) if d.name == agent_name), None)
+
+    def __get_agent_index(self,agent_name):
+        return next((index for (index, d) in enumerate(self.agents) if d.name == agent_name), None)

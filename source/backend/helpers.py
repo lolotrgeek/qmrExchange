@@ -1,5 +1,9 @@
 import plotly.graph_objects as go
 import pandas as pd
+import json
+
+def dumps(data):
+    json.dumps(data, indent=4, sort_keys=True, default=str)
 
 def plot_bars(df):
     """Returns a plotly OHLC chart.

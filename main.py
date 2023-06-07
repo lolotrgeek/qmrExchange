@@ -2,7 +2,6 @@ from source.backend.OrderSide import OrderSide
 from source.backend.LimitOrder import LimitOrder
 from source.backend.OrderBook import OrderBook
 from source.backend.Exchange import Exchange
-from source.backend.Simulator import Simulator
 from source.backend.AgentRemote import AgentRemote
 from source.backend.Agents import RandomMarketTaker, NaiveMarketMaker, CryptoMarketMaker, CryptoMarketTaker, RemoteTrader
 from source.backend.helpers import plot_bars
@@ -17,7 +16,6 @@ __all__ = [
     'LimitOrder',
     'OrderBook',
     'Exchange',
-    'Simulator',
     'AgentRemote',
     'RandomMarketTaker',
     'NaiveMarketMaker',

@@ -1,11 +1,11 @@
 from ._utils import format_dataframe_rows_to_dict
 from time import sleep
+from Messaging import Responder
 
 class Responses():
-    def __init__(self, sim, conn):
-        self.sim = sim
-        self.conn = conn
+    def __init__(self):
         self.max_tries = 5
+        self.Responder = Responder()
 
     def send(self, value, key, tries=0):
         if tries >= self.max_tries:
@@ -26,8 +26,7 @@ class Responses():
             error[key] = {'error': f'No {key} available.'}
             self.conn.put(error)
 
-    def run(self):
-        msg = self.conn.get()
+    def listen(self, msg):
         
         if ('get_sim_time' in msg):
             self.send({'sim_time': self.sim.dt, 'episode': self.sim.episode, 'episodes': self.sim._episodes}, 'sim_time')
@@ -47,7 +46,6 @@ class Responses():
         elif ('get_order_book' in msg):
             order_book = self.sim.exchange.get_order_book(msg['get_order_book']['ticker'])
             self.send({"bids": format_dataframe_rows_to_dict(order_book.df['bids']), "asks": format_dataframe_rows_to_dict(order_book.df['asks'])}, 'order_book')
-
 
         elif ('get_latest_trade' in msg):
             latest_trade = self.sim.exchange.get_latest_trade(msg['get_latest_trade']['ticker']).to_dict()
