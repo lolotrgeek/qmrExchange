@@ -9,7 +9,7 @@ from .Market import Market
 from .Messaging import Pusher, Puller, Responder, Router
 from .Requests import Requests
 from random import randint
-from .helpers import dumps
+from ._utils import dumps
 
 tickers = ['XYZ']
 agents = []
@@ -121,6 +121,10 @@ def main():
         for agent in agents:
             agent.terminate()
             agent.join()
+        clock_process.terminate()
+        exchange_router.terminate()
+        exchange_process.terminate()
+        market_process.terminate()
         clock_process.join()
         exchange_router.join()
         exchange_process.join()

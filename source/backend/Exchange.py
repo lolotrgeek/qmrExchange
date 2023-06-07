@@ -35,6 +35,7 @@ class Exchange():
         self._process_trade(ticker, 1, seed_price, 'init_seed', 'init_seed',)
         self.limit_buy(ticker, seed_price * seed_bid, 1, 'init_seed')
         self.limit_sell(ticker, seed_price * seed_ask, 1, 'init_seed')
+        return self.books[ticker]
 
     def _process_trade(self, ticker, qty, price, buyer, seller, fee=0):
         self.trade_log.append(
@@ -163,6 +164,9 @@ class Exchange():
 
     def get_cash(self, agent):
         return self.get_agent(agent).cash
+    
+    def get_assets(self, agent):
+        return self.get_agent(agent)._transactions
     
     def __update_agents_cash(self, transaction):
         for side in transaction:

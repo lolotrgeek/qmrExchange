@@ -4,7 +4,8 @@ from .OrderBook import OrderBook
 from .Trade import Trade
 from .LimitOrder import LimitOrder
 from .OrderSide import OrderSide
-
+from ._utils import format_dataframe_rows_to_dict, dumps
+ 
 class Market():
     def __init__(self, datetime= None):
         self.datetime = datetime
@@ -18,13 +19,13 @@ class Market():
     def run(self):
         market = {}
         for ticker in self.books:
-            market[ticker]["books"] = self.get_order_book(ticker)
+            market[ticker]["order_book"] = self.get_order_book(ticker)
             market[ticker]["latest_trade"] = self.get_latest_trade(ticker)
             market[ticker]["quotes"] = self.get_quotes(ticker)
             market[ticker]["best_bid"] = self.get_best_bid(ticker)
             market[ticker]["best_ask"] = self.get_best_ask(ticker)
             market[ticker]["midprice"] = self.get_midprice(ticker)
-        return market
+        return dumps(market)
 
     def get_order_book(self, ticker: str) -> OrderBook:
         """Returns the OrderBook of a given Asset
@@ -35,7 +36,7 @@ class Market():
         Returns:
             OrderBook: the orderbook of the asset.
         """
-        return self.books[ticker]
+        return self.books[ticker].df()
      
     def get_latest_trade(self, ticker:str) -> Trade:
         """Retrieves the most recent trade of a given asset
@@ -46,7 +47,7 @@ class Market():
         Returns:
             Trade
         """
-        return next(trade for trade in self.trade_log[::-1] if trade.ticker == ticker)
+        return next(trade for trade in self.trade_log[::-1] if trade.ticker == ticker).to_dict()
 
     def get_quotes(self, ticker):
         try:
@@ -112,7 +113,7 @@ class Market():
         Returns:
             pd.DataFrame: a dataframe containing all trades
         """
-        return pd.DataFrame.from_records([t.to_dict() for t in self.trade_log if t.ticker == ticker]).set_index('dt').sort_index().head(limit)
+        return pd.DataFrame.from_records([t.to_dict() for t in self.trade_log if t.ticker == ticker]).set_index('dt').sort_index().head(limit).to_json()
     
     def get_price_bars(self, ticker, limit=20, bar_size='1D'):
         trades = self.trades
@@ -120,5 +121,5 @@ class Market():
         df = trades.resample(bar_size).agg({'price': 'ohlc', 'qty': 'sum'})
         df.columns = df.columns.droplevel()
         df.rename(columns={'qty':'volume'},inplace=True)
-        return df.head(limit)
+        return df.head(limit).to_json()
     

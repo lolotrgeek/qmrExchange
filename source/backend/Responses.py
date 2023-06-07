@@ -1,125 +1,141 @@
-from ._utils import format_dataframe_rows_to_dict
+from ._utils import format_dataframe_rows_to_dict, dumps
 from time import sleep
-from Messaging import Responder
 
 class Responses():
-    def __init__(self):
+    def __init__(self, exchange, listener):
+        self.exchange = exchange
+        self.listener = listener
         self.max_tries = 5
-        self.Responder = Responder()
-
-    def send(self, value, key, tries=0):
-        if tries >= self.max_tries:
-            error = {}
-            error[key] = {'error': 'Max tries reached.'}
-            return error
-        msg = {}
-        if value is not None:
-            msg[key] = value
-            if msg:
-                self.conn.put(msg)
-            else:
-                tries += 1
-                sleep(0.1)
-                self.send(value, key, tries)
-        else:
-            error = {}
-            error[key] = {'error': f'No {key} available.'}
-            self.conn.put(error)
-
-    def listen(self, msg):
         
-        if ('get_sim_time' in msg):
-            self.send({'sim_time': self.sim.dt, 'episode': self.sim.episode, 'episodes': self.sim._episodes}, 'sim_time')
+    def create_asset_response(self, msg):
+          create_asset = self.exchange.create_asset(msg['ticker'], msg['seed_price'], msg['seed_bid'], msg['seed_ask']).to_dict()
+          return dumps(create_asset)
+    
+    def limit_buy_response(self, msg):
+        ticker = msg['ticker']
+        price = msg['price']
+        qty = msg['qty']
+        creator = msg['creator']
+        fee = msg['fee']        
+        order = self.exchange.limit_buy(ticker, price, qty, creator, fee).to_dict()
+        return dumps(order)
 
-        elif ('get_candles' in msg):
-            candles = self.sim.get_price_bars(msg['get_candles']['ticker'], bar_size=msg['get_candles']['interval']).head(msg['get_candles']['limit']).to_json()
-            self.send(candles, 'candles')
+    def limit_sell_response(self, msg):
+        ticker = msg['ticker']
+        price = msg['price']
+        qty = msg['qty']
+        creator = msg['creator']
+        fee = msg['fee']
+        order = self.exchange.limit_sell(ticker, price, qty, creator, fee).to_dict()
+        return dumps(order)       
 
-        elif ('create_asset' in msg):
-            self.sim.exchange.create_asset(msg['create_asset']['ticker'], msg['create_asset']['seed_price'], msg['create_asset']['seed_bid'], msg['create_asset']['seed_ask'])
-            self.send('Asset created.', 'created_asset')
+    def cancel_order_response(self, msg):
+        order_id = msg['order_id']
+        cancelled_order = self.exchange.cancel_order(order_id).to_dict()
+        return dumps(cancelled_order)
 
-        elif ('get_mempool' in msg):
-            mempool = self.sim.exchange.blockchain.mempool.transaction_log.head(msg['get_mempool']['limit']).to_json()
-            self.send(mempool, 'mempool')
+    def cancel_all_orders_response(self, msg):
+        ticker = msg['ticker']
+        agent = msg['agent']
+        self.exchange.cancel_all_orders(agent, ticker)
+        return 'All orders cancelled.'
 
-        elif ('get_order_book' in msg):
-            order_book = self.sim.exchange.get_order_book(msg['get_order_book']['ticker'])
-            self.send({"bids": format_dataframe_rows_to_dict(order_book.df['bids']), "asks": format_dataframe_rows_to_dict(order_book.df['asks'])}, 'order_book')
+    def market_buy_response(self, msg):
+        ticker = msg['ticker']
+        qty = msg['qty']
+        buyer = msg['buyer']
+        fee = msg['fee']
+        self.exchange.market_buy(ticker, qty, buyer, fee)
+        return 'Market buy order placed.'
+    
+    def market_sell_response(self, msg):
+        ticker = msg['ticker']
+        qty = msg['qty']
+        seller = msg['seller']
+        fee = msg['fee']
+        self.exchange.market_sell(ticker, qty, seller, fee)
+        return 'Market sell order placed.'
+    
+    def get_cash_response(self, msg):
+        agent = msg['agent']
+        return self.exchange.get_cash(agent)
 
-        elif ('get_latest_trade' in msg):
-            latest_trade = self.sim.exchange.get_latest_trade(msg['get_latest_trade']['ticker']).to_dict()
-            self.send(latest_trade, 'latest_trade')
+    def get_assets_response(self, msg):
+        agent = msg['agent']
+        return self.exchange.get_assets(agent)
+    
+    def get_transactions_response(self, msg):
+        agent = msg['agent']
+        return self.exchange.get_transactions(agent)
+    
+    def register_agent_response(self, msg):
+        name = msg['name']
+        initial_cash = msg['initial_cash']
+        return self.exchange.register_agent(name, initial_cash)
 
-        elif ('get_trades' in msg):
-            trades = self.sim.exchange.get_trades(msg['get_trades']['ticker']).head(msg['get_trades']['limit'])
-            self.send(format_dataframe_rows_to_dict(trades), 'trades')
+    def listen(self):
+        self.listener.respond('create_asset', self.create_asset_response)
+        self.listener.respond('limit_buy', self.limit_buy_response)
+        self.listener.respond('limit_sell', self.limit_sell_response)
+        self.listener.respond('cancel_order', self.cancel_order_response)
+        self.listener.respond('cancel_all_orders', self.cancel_all_orders_response)
+        self.listener.respond('market_buy', self.market_buy_response)
+        self.listener.respond('market_sell', self.market_sell_response)
+        self.listener.respond('cash', self.get_cash_response)
+        self.listener.respond('assets', self.get_assets_response)
+        self.listener.respond('transactions', self.get_transactions_response)
+        self.listener.respond('register_agent', self.register_agent_response)
 
-        elif ('get_quotes' in msg):
-            quotes = self.sim.exchange.get_quotes(msg['get_quotes']['ticker'])
-            self.send(quotes, 'quotes')
 
-        elif ('get_best_bid' in msg):
-            best_bid = self.sim.exchange.get_best_bid(msg['get_best_bid']['ticker'])
-            if best_bid is not None:
-                best_bid = best_bid.to_dict()
-                self.send(best_bid, 'best_bid')
-            else:
-                self.send(0, 'best_bid')
+class MarketResponses():
+    '''
+    DEPRECATED
+    '''
+    def __init__(self, market, listener):
+        self.market = market
+        self.listener = listener
 
-        elif ('get_best_ask' in msg):
-            best_ask = self.sim.exchange.get_best_ask(msg['get_best_ask']['ticker'])
-            if best_ask is not None:
-                best_ask = best_ask.to_dict()
-                self.send(best_ask, 'best_ask')
-            else:
-                self.send(0, 'best_ask')
+    def get_mempool_response(self, msg):
+        return self.exchange.blockchain.mempool.transaction_log.head(msg['get_mempool']['limit']).to_json()
 
-        elif ('get_midprice' in msg):
-            midprice = self.sim.exchange.get_midprice(msg['get_midprice']['ticker'])
-            self.send({"midprice": midprice}, 'midprice')
+    def candle_response(self, msg):
+        return self.market.get_price_bars(msg['candles']['ticker'], bar_size=msg['get_candles']['interval']).head(msg['get_candles']['limit']).to_json()
 
-        elif ('limit_buy' in msg):
-            ticker = msg['limit_buy']['ticker']
-            price = msg['limit_buy']['price']
-            qty = msg['limit_buy']['qty']
-            creator = msg['limit_buy']['creator']
-            fee = msg['limit_buy']['fee']
-            order = self.sim.exchange.limit_buy(ticker, price, qty, creator, fee).to_dict()
-            self.send(order, 'limit_buy_placed')
+    def get_order_book_response(self, msg):
+        order_book = self.exchange.get_order_book(msg['get_order_book']['ticker'])
+        return {"bids": format_dataframe_rows_to_dict(order_book.df['bids']), "asks": format_dataframe_rows_to_dict(order_book.df['asks'])}
 
-        elif ('limit_sell' in msg):
-            ticker = msg['limit_sell']['ticker']
-            price = msg['limit_sell']['price']
-            qty = msg['limit_sell']['qty']
-            creator = msg['limit_sell']['creator']
-            fee = msg['limit_sell']['fee']
-            order = self.sim.exchange.limit_sell(ticker, price, qty, creator, fee).to_dict()
-            self.send(order, 'limit_sell_placed')
+    def get_latest_trade_response(self, msg):
+        latest_trade = self.exchange.get_latest_trade(msg['get_latest_trade']['ticker']).to_dict()
+        return latest_trade
+    
+    def get_trades_response(self, msg):
+        trades = self.exchange.get_trades(msg['get_trades']['ticker']).head(msg['get_trades']['limit'])
+        return format_dataframe_rows_to_dict(trades)
 
-        elif ('cancel_order' in msg):
-            order_id = msg['cancel_order']['order_id']
-            cancelled_order = self.sim.exchange.cancel_order(order_id).to_dict()
-            self.send(cancelled_order, 'order_cancelled')
+    def get_quotes_response(self, msg):
+        quotes = self.exchange.get_quotes(msg['get_quotes']['ticker'])
+        return quotes
 
-        elif ('cancel_all_orders' in msg):
-            ticker = msg['cancel_all_orders']['ticker']
-            agent = msg['cancel_all_orders']['agent']
-            self.sim.exchange.cancel_all_orders(agent, ticker)
-            self.send('All orders cancelled.', 'orders_cancelled')
+    def get_best_bid_response(self, msg):
+            best_bid = self.exchange.get_best_bid(msg['get_best_bid']['ticker'])
+            return best_bid.to_dict()
 
-        elif ('market_buy' in msg):
-            ticker = msg['market_buy']['ticker']
-            qty = msg['market_buy']['qty']
-            buyer = msg['market_buy']['buyer']
-            fee = msg['market_buy']['fee']
-            self.sim.exchange.market_buy(ticker, qty, buyer, fee)
-            self.send('Market buy order placed.', 'market_buy_placed')
+    def get_best_ask_response(self, msg):
+        best_ask = self.exchange.get_best_ask(msg['get_best_ask']['ticker'])
+        return best_ask.to_dict()
 
-        elif ('market_sell' in msg):
-            ticker = msg['market_sell']['ticker']
-            qty = msg['market_sell']['qty']
-            seller = msg['market_sell']['seller']
-            fee = msg['market_sell']['fee']
-            self.sim.exchange.market_sell(ticker, qty, seller, fee)
-            self.send('Market sell order placed.', 'market_sell_placed')
+    def get_midprice_response(self, msg):
+        midprice = self.exchange.get_midprice(msg['get_midprice']['ticker'])
+        return midprice
+
+    def listen(self):
+        self.listener.respond('candles', self.candle_response)
+        self.listener.respond('get_mempool', self.get_mempool_response)
+        self.listener.respond('get_order_book', self.get_order_book_response)
+        self.listener.respond('get_latest_trade', self.get_latest_trade_response)
+        self.listener.respond('get_trades', self.get_trades_response)
+        self.listener.respond('get_quotes', self.get_quotes_response)
+        self.listener.respond('get_best_bid', self.get_best_bid_response)
+        self.listener.respond('get_best_ask', self.get_best_ask_response)
+        self.listener.respond('get_midprice', self.get_midprice_response)        

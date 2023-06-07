@@ -41,28 +41,35 @@ class Requests():
         return self.make_request('create_asset', {'ticker': ticker, 'seed_price': seed_price, 'seed_bid': seed_bid, 'seed_ask': seed_ask}, self.market_factory)
 
     def get_mempool(self, limit):
-        return self.make_request('get_mempool', {'limit': limit}, self.market_factory)
+        #TODO: add mempool to market
+        return self.make_request('mempool', {'limit': limit}, self.market_factory)
 
     def get_order_book(self, ticker):
-        return self.make_request('get_order_book', {'ticker': ticker}, self.market_factory)
+        response = self.make_request('order_book', {'ticker': ticker}, self.market_factory)
+        return response[ticker]['order_book']
 
     def get_latest_trade(self, ticker):
-        return self.make_request('get_latest_trade', {'ticker': ticker}, self.market_factory)
+        response = self.make_request('latest_trade', {'ticker': ticker}, self.market_factory)
+        return response[ticker]['latest_trade']
 
     def get_trades(self, ticker, limit):
-        return self.make_request('get_trades', {'ticker': ticker, 'limit': limit}, 'trades', self.trades_factory)
+        return self.make_request('trades', {'ticker': ticker, 'limit': limit}, 'trades', self.trades_factory)
 
     def get_quotes(self, ticker):
-        return self.make_request('quotes', {'ticker': ticker}, self.market_factory)
+        response = self.make_request('quotes', {'ticker': ticker}, self.market_factory)
+        return response[ticker]['quotes']
 
     def get_best_bid(self, ticker):
-        return self.make_request('best_bid', {'ticker': ticker}, self.market_factory)
+        response = self.make_request('best_bid', {'ticker': ticker}, self.market_factory)
+        return response[ticker]['best_bid']
 
     def get_best_ask(self, ticker):
-        return self.make_request('best_ask', {'ticker': ticker}, self.market_factory)
+        response = self.make_request('best_ask', {'ticker': ticker}, self.market_factory)
+        return response[ticker]['best_ask']
 
     def get_midprice(self, ticker):
-        return self.make_request('midprice', {'ticker': ticker}, self.market_factory)
+        response = self.make_request('midprice', {'ticker': ticker}, self.market_factory)
+        return response[ticker]['midprice']
 
     def limit_buy(self, ticker, price, quantity, creator, fee):
         return self.make_request('limit_buy', {'ticker': ticker, 'price': price, 'qty': quantity, 'creator': creator, 'fee': fee}, self.order_factory) 
@@ -83,13 +90,13 @@ class Requests():
         return self.make_request('market_sell', {'ticker': ticker, 'qty': quantity, 'seller': creator, 'fee': fee}, self.order_factory)
     
     def get_cash(self, agent):
-        return self.make_request('get_cash', {'agent': agent}, self.order_factory)
+        return self.make_request('cash', {'agent': agent}, self.order_factory)
     
     def get_assets(self, agent):
-        return self.make_request('get_assets', {'agent': agent}, self.order_factory)
+        return self.make_request('assets', {'agent': agent}, self.order_factory)
     
     def get_transactions(self, agent):
-        return self.make_request('get_transactions', {'agent': agent}, self.order_factory)
+        return self.make_request('transactions', {'agent': agent}, self.order_factory)
     
     def register_agent(self, name, initial_cash):
         return self.make_request('register_agent', {'name': name, 'initial_cash': initial_cash}, self.order_factory)

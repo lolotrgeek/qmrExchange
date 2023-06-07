@@ -1,6 +1,9 @@
 from datetime import timedelta, datetime
 import random, string
+import json
 
+def dumps(data):
+    json.dumps(data, indent=4, sort_keys=True, default=str)
 
 def get_pandas_time(time_unit):
     return {
