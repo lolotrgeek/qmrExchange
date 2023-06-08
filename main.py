@@ -6,9 +6,18 @@ from source.backend.AgentRemote import AgentRemote
 from source.backend.Agents import RandomMarketTaker, NaiveMarketMaker, CryptoMarketMaker, CryptoMarketTaker, RemoteTrader
 from source.backend.helpers import plot_bars
 from source.backend.run import main
+import sys
 
 if __name__ == '__main__':
-    main()    
+    try:
+        main()        
+        print('done...')
+        exit(0)
+    except:
+        print(sys.exc_info()[0])
+    finally:
+        print('Exiting...')
+        exit(0)
 
 # export all imports
 __all__ = [
