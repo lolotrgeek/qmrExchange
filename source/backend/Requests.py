@@ -9,7 +9,7 @@ class Requests():
         self.candle_factory = self.order_factory
         self.trades_factory = self.order_factory
         self.timeout = 5
-        self.max_tries = 5
+        self.max_tries = 1
         
     def make_request(self, topic:str, request:dict, factory, tries=0):
         if tries >= self.max_tries:
@@ -27,7 +27,7 @@ class Requests():
             else:
                 return msg
         except Exception as e:
-            print(e)
+            print("[Request Error] ", e)
             traceback.print_exc()
             tries += 1
             sleep(0.1)

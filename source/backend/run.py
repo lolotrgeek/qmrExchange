@@ -65,7 +65,7 @@ def run_exchange(time_channel, exchange_channel):
             responses.listen()
             pass
     except Exception as e:
-        print(e)
+        print("[Exchange Error] ", e)
         return None  
 
 
@@ -80,7 +80,7 @@ def run_agent(time_channel, exchange_channel):
         while True:
             agent.next()
     except Exception as e:
-        print(e)
+        print("[Agent Error] ", e)
         return None
 
 def agent_episodes(time_channel, exchange_channel):
@@ -101,7 +101,7 @@ def agent_episodes(time_channel, exchange_channel):
         # mt_holdings = portfolio.get_portfolio_history('market_taker')
         # mm_holdings = portfolio.get_portfolio_history('market_maker')
     except Exception as e:
-        print(e)
+        print("[Agent Error] ", e)
         return None
 
 def main():
