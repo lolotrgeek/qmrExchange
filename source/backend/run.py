@@ -1,133 +1,144 @@
 
 from .Agents import NaiveMarketMaker, RandomMarketTaker
 from .Exchange import Exchange
-import time
+from time import sleep
 from multiprocessing import Process
 from .Clock import Clock
 from .API import API
 from .Market import Market
 from .Messaging import Pusher, Puller, Responder, Router
 from .Requests import Requests
+from .Responses import Responses
+from .Portfolio import Portfolio
+from datetime import datetime
 from random import randint
-from ._utils import dumps
+from ._utils import dumps, format_dataframe_rows_to_dict
 
 tickers = ['XYZ']
 agents = []
-num_agents = 5
+num_agents = 1
+start_time = datetime(1700,1,1)
 
-def run_clock(time_channel):
-    clock = Clock()
-    time_pusher = Pusher(time_channel)
-    while True:
-        clock.tick()
-        time_pusher.push(dumps(clock.dt))
+def run_clock():
+    try:
+        p = Pusher(5115)
+        clock = Clock()
+        while True:
+            clock.tick()
+            msg = p.push({"time": str(clock.dt)})
+    
+    except KeyboardInterrupt:
+        return
 
-def get_time(time_channel):
-    '''
-    call this to get the current simulation time, good for timestamps
-    '''
-    time_puller = Puller(time_channel)
-    return time_puller.pull()
+def get_clock(time_channel):
+    try:
+        s = Puller(time_channel)
+        sleep(.5)
+        while True:
+            msg = s.pull()
+            # print(msg)
+    except Exception as e:
+        print(e)
+        return None
 
-def route_exchange(exchange_producer, exchange_consumer):
-    router = Router(exchange_producer, exchange_consumer)
-    router.route()
+def route_clock(time_channel):
+    try:
+        r = Router(5115, time_channel )
+        r.route()
+    except Exception as e:
+        print(e)
+        return None  
 
-def run_exchange(time_channel, exchange_producer, order_channel):
-    exchange = Exchange()
-    exchange.datetime = get_time(time_channel)
-    exchange.create_asset(tickers[0])
-    order_listen = Responder(order_channel)
-    books_trades = Pusher(exchange_producer)
+def run_exchange(time_channel, exchange_channel):
+    try: 
+        exchange = Exchange(datetime=start_time)
+        time_puller = Puller(time_channel)
+        exchange.datetime = time_puller.pull()
+        exchange.create_asset(tickers[0])
+        exchange_listener = Responder(exchange_channel)
+        responses = Responses(exchange, exchange_listener)
 
-    while True:
-        # listen for orders and cancellations here on the exchange channel...
-        # when a message is received, call the appropriate exchange method
-        exchange.datetime = get_time(time_channel)
-        books_trades.push({"books": exchange.books, "trades": exchange.trades, "trade_log": exchange.trade_log})
-        order_listen.respond('limit_buy', exchange.limit_buy)
-        order_listen.respond('limit_sell', exchange.limit_sell)
-        order_listen.respond('cancel_order', exchange.cancel_order)
-        order_listen.respond('cancel_all_orders', exchange.cancel_all_orders)
-        order_listen.respond('market_buy', exchange.market_buy)
-        order_listen.respond('market_sell', exchange.market_sell)
-        order_listen.respond('get_cash', exchange.get_cash)
-        order_listen.respond('get_assets', exchange.get_assets)
-        order_listen.respond('get_transactions', exchange.get_transactions)
-        order_listen.respond('register_agent', exchange.register_agent)
-        pass
+        while True:
+            # listen for orders and cancellations here on the exchange channel...
+            # when a message is received, call the appropriate exchange method
+            exchange.datetime = time_puller.pull()
+            responses.listen()
+            pass
+    except Exception as e:
+        print(e)
+        return None  
 
-def run_market(time_channel, market_channel, exchange_consumer, candle_channel, trades_channel ):
-    market = Market()
-    exchange_puller = Puller(exchange_consumer)
-    market_pusher = Pusher(market_channel)
 
-    while True:
-        market.datetime = get_time(time_channel)
-        exchange_data = exchange_puller.pull()
-        if exchange_data:
-            market.books = exchange_data['books']
-            market.trades = exchange_data['trades']
-            market.trades_log = exchange_data['trade_log']
+def run_agent(time_channel, exchange_channel):
+    try:
+        agent = None
+        if randint(0,1) == 0:
+            agent =  NaiveMarketMaker(name='market_maker', tickers=tickers, aum=1_000, spread_pct=0.005, qty_per_order=4, requester=Requests(exchange_channel, market_channel, candle_channel, trades_channel))
+        else:
+            agent = RandomMarketTaker(name='market_taker', tickers=tickers, aum=1_000, prob_buy=.2, prob_sell=.2, qty_per_order=1, requester=Requests(exchange_channel, market_channel, candle_channel, trades_channel) )
 
-        market_data = market.run()
-        market_pusher.push(market_data)
+        while True:
+            agent.next()
+    except Exception as e:
+        print(e)
+        return None
 
-        candle_responder = Responder(candle_channel)
-        candle_responder.respond('candles', market.get_price_bars)
+def agent_episodes(time_channel, exchange_channel):
+    try:
+        episodes = 1000
+        maker =  NaiveMarketMaker(name='market_maker', tickers=tickers, aum=1_000, spread_pct=0.005, qty_per_order=4, requester=Requests(exchange_channel))
+        taker = RandomMarketTaker(name='market_taker', tickers=tickers, aum=1_000, prob_buy=.2, prob_sell=.2, qty_per_order=1, requester=Requests(exchange_channel) )
+        for i in range(0, episodes):
+            maker.next()
+            taker.next()
+            print(f'episode {i} complete')
 
-        trades_responder = Responder(trades_channel)
-        trades_responder.respond('trades', market.get_trades)
+        time_puller = Puller(time_channel)
+        end_time = time_puller.pull()
+        # portfolio=Portfolio(from_date=start_time)
 
-def run_agent(market_channel, candle_channel, trades_channel, order_channel):
-    agent = None
-    if randint(0,1) == 0:
-        agent =  NaiveMarketMaker(name='market_maker',  tickers=tickers, aum=1_000, spread_pct=0.005, qty_per_order=4, seed=42, requester=Requests(order_channel, market_channel, candle_channel, trades_channel) )
-    else:
-        agent = RandomMarketTaker(name='market_taker', tickers=tickers, aum=1_000, prob_buy=.2, prob_sell=.2, qty_per_order=1,seed=42, requester=Requests(order_channel, market_channel, candle_channel, trades_channel) )
 
-    while True:
-        agent.next()
+        # mt_holdings = portfolio.get_portfolio_history('market_taker')
+        # mm_holdings = portfolio.get_portfolio_history('market_maker')
+    except Exception as e:
+        print(e)
+        return None
 
 def main():
-
-    time_channel = 51143
-    order_channel = 55570
-    exchange_producer = 55550
-    exchange_consumer = 55551
-    market_channel = 55560
-    candle_channel = 55561
-    trades_channel = 55562
-
-    clock_process = Process(target=run_clock, args=(time_channel, ))
-    exchange_router = Process(target=route_exchange, args=(exchange_producer, exchange_consumer ))
-    exchange_process = Process(target=run_exchange, args=(time_channel, exchange_producer, order_channel ))
-    market_process = Process(target=run_market, args=(time_channel, market_channel, exchange_consumer, candle_channel, trades_channel ))
-
-    clock_process.start()
-    exchange_router.start()
-    exchange_process.start()
-    market_process.start()
-
-    for i in range(0,num_agents):
-        agent_process = Process(target=run_agent, args=(market_channel, candle_channel, trades_channel, order_channel ))
-        agent_process.start()
-
     try:
-        while 1:
-            time.sleep(.1)
+        time_channel = 5114
+        exchange_channel = 5570
+
+        clock_process = Process(target=run_clock)
+        clock_router = Process(target=route_clock, args=(time_channel, ))
+        clock_getter = Process(target=get_clock, args=(time_channel, ))
+        exchange_process = Process(target=run_exchange, args=(time_channel, exchange_channel ))
+
+        clock_router.start()
+        clock_process.start()
+        clock_getter.start()
+        exchange_process.start()
+
+        for i in range(0,num_agents):
+            agent_process = Process(target=agent_episodes, args=(time_channel, exchange_channel ))
+            agent_process.start()
+
+        while True:
+            sleep(.1)
+
     except KeyboardInterrupt:
         print("attempting to close processes..." )
         for agent in agents:
             agent.terminate()
             agent.join()
         clock_process.terminate()
-        exchange_router.terminate()
+        clock_router.terminate()
+        clock_getter.terminate()
         exchange_process.terminate()
-        market_process.terminate()
         clock_process.join()
-        exchange_router.join()
         exchange_process.join()
-        market_process.join()
+
         print("processes successfully closed")
 
+    finally:
+        exit(0)

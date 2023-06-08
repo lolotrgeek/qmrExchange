@@ -3,11 +3,11 @@ from .Messaging import Puller, Requester
 import traceback
 
 class Requests():
-    def __init__(self, order_channel, market_channel, candle_channel, trades_channel):
-        self.order_factory = Requester(order_channel)
-        self.market_factory = Puller(market_channel)
-        self.candle_factory = Requester(candle_channel)
-        self.trades_factory = Requester(trades_channel)
+    def __init__(self, exchange_channel):
+        self.order_factory = Requester(exchange_channel)
+        self.market_factory = self.order_factory
+        self.candle_factory = self.order_factory
+        self.trades_factory = self.order_factory
         self.timeout = 5
         self.max_tries = 5
         
@@ -19,20 +19,19 @@ class Requests():
         try:
             msg = factory.request(topic, request)
             if msg is None or 'error' in msg:
-                raise Exception('Waiting...')
+                raise Exception(f'{topic} error')
             elif type(msg) is not dict:
-                raise Exception('Waiting...')
+                raise Exception(f'{topic} Not dict...')
             elif msg.get(topic) is None:
-                raise Exception('Waiting...')
+                raise Exception(f'{topic} Not {topic}...')
             else:
                 return msg
         except Exception as e:
-            if e != 'Waiting...':
-                print(f"Request Error {topic}:", e)
-                traceback.print_exc()
+            print(e)
+            traceback.print_exc()
             tries += 1
             sleep(0.1)
-            return self.make_request(request,topic, factory, tries)
+            return self.make_request(topic, request, factory, tries)
     
     def get_candles(self, ticker, interval, limit):
         return self.make_request('candles', {'ticker': ticker, 'interval': interval, 'limit': limit}, self.candle_factory)
@@ -45,31 +44,25 @@ class Requests():
         return self.make_request('mempool', {'limit': limit}, self.market_factory)
 
     def get_order_book(self, ticker):
-        response = self.make_request('order_book', {'ticker': ticker}, self.market_factory)
-        return response[ticker]['order_book']
+        return self.make_request('order_book', {'ticker': ticker}, self.market_factory)
 
     def get_latest_trade(self, ticker):
-        response = self.make_request('latest_trade', {'ticker': ticker}, self.market_factory)
-        return response[ticker]['latest_trade']
+        return self.make_request('latest_trade', {'ticker': ticker}, self.market_factory)
 
     def get_trades(self, ticker, limit):
         return self.make_request('trades', {'ticker': ticker, 'limit': limit}, 'trades', self.trades_factory)
 
     def get_quotes(self, ticker):
-        response = self.make_request('quotes', {'ticker': ticker}, self.market_factory)
-        return response[ticker]['quotes']
+        return self.make_request('quotes', {'ticker': ticker}, self.market_factory)
 
     def get_best_bid(self, ticker):
-        response = self.make_request('best_bid', {'ticker': ticker}, self.market_factory)
-        return response[ticker]['best_bid']
+        return self.make_request('best_bid', {'ticker': ticker}, self.market_factory)
 
     def get_best_ask(self, ticker):
-        response = self.make_request('best_ask', {'ticker': ticker}, self.market_factory)
-        return response[ticker]['best_ask']
+        return self.make_request('best_ask', {'ticker': ticker}, self.market_factory)
 
     def get_midprice(self, ticker):
-        response = self.make_request('midprice', {'ticker': ticker}, self.market_factory)
-        return response[ticker]['midprice']
+        return self.make_request('midprice', {'ticker': ticker}, self.market_factory)
 
     def limit_buy(self, ticker, price, quantity, creator, fee):
         return self.make_request('limit_buy', {'ticker': ticker, 'price': price, 'qty': quantity, 'creator': creator, 'fee': fee}, self.order_factory) 
