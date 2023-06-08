@@ -39,7 +39,8 @@ class Pusher():
         self.lowwatermark = 1
         self.context = zmq.Context()
         self.zmq_socket = self.context.socket(zmq.PUSH)
-        self.zmq_socket.connect(f"tcp://127.0.0.1:{channel}")
+        self.address = f"tcp://127.0.0.1:{channel}"
+        self.zmq_socket.connect(self.address)
         
 
     def push(self, message):
@@ -54,13 +55,13 @@ class Pusher():
 class Puller():
     def __init__(self, channel='5556'):
         self.context = zmq.Context()
-        self.results_receiver = self.context.socket(zmq.PULL)
-        self.results_receiver.connect(f"tcp://127.0.0.1:{channel}")
-        
+        self.socket = self.context.socket(zmq.PULL)
+        self.address = f"tcp://127.0.0.1:{channel}"
+        self.socket.connect(self.address)
 
     def pull(self):
         try:
-            msg = self.results_receiver.recv_json()
+            msg = self.socket.recv_json()
             return msg
         except Exception as e:
             print(e)
