@@ -2,8 +2,8 @@ from .AgentProcess import Agent
 import random
 
 class RandomMarketTaker(Agent):
-    def __init__(self,name,tickers, aum=10_000,prob_buy=.2,prob_sell=.2,qty_per_order=1,seed=None):
-        Agent.__init__(self, name, tickers, aum)
+    def __init__(self,name,tickers, aum=10_000,prob_buy=.2,prob_sell=.2,qty_per_order=1,seed=None, requester=None):
+        Agent.__init__(self, name, tickers, aum, requester=requester)
         if  prob_buy + prob_sell> 1:
             raise ValueError("Sum of probabilities cannot be greater than 1.") 
         self.prob_buy = prob_buy
@@ -29,8 +29,8 @@ class RandomMarketTaker(Agent):
 
 
 class NaiveMarketMaker(Agent):
-    def __init__(self, name, tickers, aum, spread_pct=.005, qty_per_order=1):
-        Agent.__init__(self, name, tickers, aum)
+    def __init__(self, name, tickers, aum, spread_pct=.005, qty_per_order=1, requester=None):
+        Agent.__init__(self, name, tickers, aum, requester=requester)
         self.qty_per_order = qty_per_order
         self.tickers = tickers
         self.spread_pct = spread_pct
