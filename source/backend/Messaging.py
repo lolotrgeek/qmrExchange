@@ -1,7 +1,7 @@
 import zmq
 
 class Requester():
-    def __init__(self, channel='5557'):
+    def __init__(self, channel='5556'):
             self.context = zmq.Context()
             self.socket = self.context.socket(zmq.REQ)
             self.socket.connect(f'tcp://127.0.0.1:{channel}')
@@ -15,23 +15,43 @@ class Requester():
             return None
 
 class Responder():
-    def __init__(self, channel='5557'):
+    def __init__(self, channel='5557', topics ={}):
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.REP)
-        self.socket.bind(f'tcp://127.0.0.1:{channel}')
+        self.socket.connect(f'tcp://127.0.0.1:{channel}')
+        self.topics = topics
 
-    def respond(self, topic, callback=lambda x: x):
+    def respond(self):
         try:
-            while True:
-                msg = self.socket.recv_json()
-                if msg["topic"] == topic:
-                    response = callback(msg['args'])
-                    self.socket.send_json(response)
-                else:
-                    self.socket.send_json(None)
+            msg = self.socket.recv_json()
+            if msg["topic"] in self.topics.keys():
+                response = self.topics[msg['topic']](msg['args'])
+                self.socket.send_json(response)
+                return response
+            else:
+                self.socket.send_json(None)
+                return None
         except Exception as e:
-            print(e)
+            # print("Response Error", e)
+            self.socket.close()
             return None
+
+class Broker():
+    def __init__(self, request_side='5556', response_side='5557'):
+        self.context = zmq.Context()
+        self.requests_socket = self.context.socket(zmq.ROUTER)
+        self.requests_socket.bind(f"tcp://127.0.0.1:{request_side}")
+        self.responses_socket = self.context.socket(zmq.DEALER)
+        self.responses_socket.bind(f"tcp://127.0.0.1:{response_side}")
+        self.poller = zmq.Poller()
+        self.poller.register(self.requests_socket, zmq.POLLIN)
+        self.poller.register(self.responses_socket, zmq.POLLIN)
+
+    def route(self, cb=None):
+            try:
+                zmq.proxy(self.requests_socket, self.responses_socket)
+            except Exception as e:
+                print("[Broker Error]", e)
 
 class Pusher():
     def __init__(self, channel='5558'):
