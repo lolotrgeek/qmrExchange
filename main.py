@@ -15,9 +15,8 @@ if __name__ == '__main__':
         exit(0)
     except:
         print(sys.exc_info()[0])
-    finally:
-        print('Exiting...')
         exit(0)
+        
 
 # export all imports
 __all__ = [
