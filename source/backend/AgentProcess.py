@@ -150,7 +150,7 @@ class Agent():
         Args:
             ticker (str): the ticker of the asset.
         """
-        self.requests.cancel_all_orders(self.name,ticker)
+        self.requests.cancel_all_orders(ticker, self.name)
 
     def get_price_bars(self, bar_size='1D', limit=20):
         return  self.requests.get_price_bars(bar_size, limit=limit)
@@ -158,8 +158,8 @@ class Agent():
     def get_cash(self):
         return self.requests.get_cash(self.name)
     
-    def register(self, initial_cash):
-        return self.requests.register_agent(self.name, initial_cash)
+    def register(self):
+        return self.requests.register_agent(self.name, self.initial_cash)
 
     def next(self):  
         pass
