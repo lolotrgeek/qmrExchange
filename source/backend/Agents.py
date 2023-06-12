@@ -25,7 +25,7 @@ class RandomMarketTaker(Agent):
             if action == 'buy':
                 self.market_buy(ticker,self.qty_per_order)
             elif action == 'close':
-                self.market_sell(ticker,self.get_position(ticker),self.name)
+                self.market_sell(ticker,self.get_position(ticker))
 
 
 class NaiveMarketMaker(Agent):
@@ -39,6 +39,8 @@ class NaiveMarketMaker(Agent):
     def next(self):
         for ticker in self.tickers:
             latest_trade = self.get_latest_trade(ticker)
+            if latest_trade is None or 'price' not in latest_trade:
+                break
             price = latest_trade['price']
             self.cancel_all_orders(ticker)
             self.limit_buy(ticker, price * (1-self.spread_pct/2), qty=self.qty_per_order)

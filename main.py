@@ -7,6 +7,7 @@ from source.backend.Agents import RandomMarketTaker, NaiveMarketMaker, CryptoMar
 from source.backend.helpers import plot_bars
 from source.backend.run import main
 import sys
+import traceback
 
 if __name__ == '__main__':
     try:
@@ -14,7 +15,8 @@ if __name__ == '__main__':
         print('done...')
         exit(0)
     except:
-        print(sys.exc_info()[0])
+        print(sys.exc_info()[2])
+        print(traceback.format_exc())
         exit(0)
         
 

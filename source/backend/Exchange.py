@@ -185,6 +185,7 @@ class Exchange():
                 trade_qty = min(qty, best_ask.qty)
                 taker_fee = self.fees.taker_fee(qty)
                 self.fees.total_fee_revenue += taker_fee
+                if(type(fee) is str): fee = float(fee)
                 self._process_trade(ticker, trade_qty, best_ask.price, creator, best_ask.creator, fee=fee+taker_fee)
                 qty -= trade_qty
                 self.books[ticker].asks[0].qty -= trade_qty
@@ -212,6 +213,7 @@ class Exchange():
                 trade_qty = min(qty, best_bid.qty)
                 taker_fee = self.fees.taker_fee(qty)
                 self.fees.total_fee_revenue += taker_fee
+                if(type(fee) is str): fee = float(fee)
                 self._process_trade(ticker, trade_qty, best_bid.price, best_bid.creator, creator, fee=fee+taker_fee)
                 qty -= trade_qty
                 self.books[ticker].bids[0].qty -= trade_qty
@@ -247,13 +249,14 @@ class Exchange():
         self.books[ticker].asks = [a for a in self.books[ticker].asks if a.creator != agent]
         return True
 
-    def market_buy(self, ticker: str, qty: int, buyer: str, fee=0):
+    def market_buy(self, ticker: str, qty: int, buyer: str, fee=0.0):
         for idx, ask in enumerate(self.books[ticker].asks):
             trade_qty = min(ask.qty, qty)
             self.books[ticker].asks[idx].qty -= trade_qty
             qty -= trade_qty
             taker_fee = self.fees.taker_fee(qty)
             self.fees.total_fee_revenue += taker_fee
+            if(type(fee) is str): fee = float(fee)
             self._process_trade(ticker, trade_qty,ask.price, buyer, ask.creator, fee=fee+taker_fee)
             if qty == 0:
                 break
@@ -268,6 +271,7 @@ class Exchange():
             qty -= trade_qty
             taker_fee = self.fees.taker_fee(qty)
             self.fees.total_fee_revenue += taker_fee
+            if(type(fee) is str): fee = float(fee)
             self._process_trade(ticker, trade_qty,bid.price, bid.creator, seller, fee=fee+taker_fee)
             if qty == 0:
                 break
@@ -297,8 +301,8 @@ class Exchange():
         for side in transaction:
             agent_idx = self.__get_agent_index(side['agent'])
             if agent_idx is not None:
-                self.agents[agent_idx].cash += side['cash_flow']
-                self.agents[agent_idx]._transactions.append({'dt':self.dt,'cash_flow':side['cash_flow'],'ticker':side['ticker'],'qty':side['qty']})
+                self.agents[agent_idx]['cash'] += side['cash_flow']
+                self.agents[agent_idx]['_transactions'].append({'dt':self.datetime,'cash_flow':side['cash_flow'],'ticker':side['ticker'],'qty':side['qty']})
 
     def __update_agents_currency(self, transaction):
         if transaction.confirmed:
@@ -309,10 +313,10 @@ class Exchange():
             buyer = self.agents[buyer_idx]
             seller = self.agents[seller_idx]
             #TODO: have cash be an asset that is some currency
-            buyer.cash -= transaction.amount + transaction.fee #NOTE: transaction.fee includes the exchange fee and the network fee
-            seller.cash += transaction.amount
-            buyer._transactions.append({'dt':self.dt,'cash_flow':-(transaction.amount+transaction.fee),'ticker':transaction.ticker,'qty':transaction.amount})
-            seller._transactions.append({'dt':self.dt,'cash_flow':transaction.amount,'ticker':transaction.ticker,'qty':transaction.amount})
+            buyer['cash'] -= transaction.amount + transaction.fee #NOTE: transaction.fee includes the exchange fee and the network fee
+            seller['cash'] += transaction.amount
+            buyer['_transactions'].append({'dt':self.dt,'cash_flow':-(transaction.amount+transaction.fee),'ticker':transaction.ticker,'qty':transaction.amount})
+            seller['_transactions'].append({'dt':self.dt,'cash_flow':transaction.amount,'ticker':transaction.ticker,'qty':transaction.amount})
 
     def get_agent(self, agent_name):
         return next((d for (index, d) in enumerate(self.agents) if d['name'] == agent_name), None)

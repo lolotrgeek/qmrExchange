@@ -1,40 +1,52 @@
+import traceback
 import zmq
+import errno
 
 class Requester():
     def __init__(self, channel='5556'):
             self.context = zmq.Context()
             self.socket = self.context.socket(zmq.REQ)
             self.socket.connect(f'tcp://127.0.0.1:{channel}')
+            self.poller = zmq.Poller()
+            self.poller.register(self.socket, zmq.POLLIN)
 
-    def request(self, topic, args=None):
+    def request(self, msg):
         try:
-            self.socket.send_json({'topic': topic, 'args': args})
+            self.socket.send_json(msg)
             return self.socket.recv_json()
+            evts = dict(self.poller.poll(1))
+            if self.socket in evts:
+                return self.socket.recv_json(zmq.DONTWAIT)
+            else:
+                return None
         except Exception as e:
-            print(e)
+            print("[Requester Error]", e, "Request:", msg)
+            print(traceback.format_exc())
             return None
+        except KeyboardInterrupt:
+            self.socket.close()
+            self.context.term()
 
 class Responder():
-    def __init__(self, channel='5557', topics ={}):
+    def __init__(self, channel='5557'):
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.REP)
         self.socket.connect(f'tcp://127.0.0.1:{channel}')
-        self.topics = topics
 
-    def respond(self):
+    def respond(self, callback = lambda msg: msg):
         try:
             msg = self.socket.recv_json()
-            if msg["topic"] in self.topics.keys():
-                response = self.topics[msg['topic']](msg['args'])
-                self.socket.send_json(response)
-                return response
-            else:
-                self.socket.send_json(None)
-                return None
+            response = callback(msg)
+            self.socket.send_json(response)
+            return response
         except Exception as e:
-            # print("Response Error", e)
-            self.socket.close()
+            print("[Response Error]", e, "Request:", msg)
+            print(traceback.format_exc())
             return None
+        except KeyboardInterrupt:
+            self.socket.close()
+            self.context.term()
+
 
 class Broker():
     def __init__(self, request_side='5556', response_side='5557'):
@@ -43,15 +55,14 @@ class Broker():
         self.requests_socket.bind(f"tcp://127.0.0.1:{request_side}")
         self.responses_socket = self.context.socket(zmq.DEALER)
         self.responses_socket.bind(f"tcp://127.0.0.1:{response_side}")
-        self.poller = zmq.Poller()
-        self.poller.register(self.requests_socket, zmq.POLLIN)
-        self.poller.register(self.responses_socket, zmq.POLLIN)
+        self.mon_socket = self.context.socket(zmq.PUB)
+        self.mon_socket.bind("tcp://127.0.0.1:6969")
 
     def route(self, cb=None):
-            try:
-                zmq.proxy(self.requests_socket, self.responses_socket)
-            except Exception as e:
-                print("[Broker Error]", e)
+        try:
+            zmq.proxy(self.requests_socket, self.responses_socket, self.mon_socket)
+        except Exception as e:
+            print("[Broker Error]", e)
 
 class Pusher():
     def __init__(self, channel='5558'):
@@ -62,7 +73,6 @@ class Pusher():
         self.address = f"tcp://127.0.0.1:{channel}"
         self.zmq_socket.connect(self.address)
         
-
     def push(self, message):
         try:
             self.zmq_socket.send_json(message)

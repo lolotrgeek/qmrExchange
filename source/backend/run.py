@@ -103,7 +103,8 @@ def run_exchange(time_channel, exchange_channel):
     except Exception as e:
         print("[Exchange Error] ", e)
         return None  
-
+    except KeyboardInterrupt:
+        return None
 def run_agent(time_channel, exchange_channel):
     try:
         agent = None
@@ -142,6 +143,8 @@ def agent_episodes(time_channel, agent_channel):
     except Exception as e:
         print("[Agent Error] ", e)
         traceback.print_exc()
+        return None
+    except KeyboardInterrupt:
         return None
 
 def main():
