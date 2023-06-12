@@ -1,6 +1,7 @@
 import pandas as pd
 from typing import List
 from .LimitOrder import LimitOrder
+from ._utils import format_dataframe_rows_to_dict
 
 class OrderBook():
     """An OrderBook contains all the relevant trading data of a given asset. It contains the list of bids and asks, ordered by their place in the queue.
@@ -33,4 +34,10 @@ class OrderBook():
         return {
             'bids': pd.DataFrame.from_records([b.to_dict() for b in self.bids]),
             'asks': pd.DataFrame.from_records([a.to_dict() for a in self.asks])
+        }
+    
+    def to_dict(self) -> dict:
+        return {
+            "bids": [b.to_dict() for b in self.bids], 
+            "asks": [a.to_dict() for a in self.asks]
         }
