@@ -6,13 +6,12 @@ from multiprocessing import Process
 from .Clock import Clock
 from .API import API
 from .Market import Market
-from .Messaging import Pusher, Puller, Responder, Router, Broker
+from .Messaging import Pusher, Puller, Requester, Responder, Router, Broker
 from .Requests import Requests
-from .Responses import Responses
 from .Portfolio import Portfolio
 from datetime import datetime
 from random import randint
-from ._utils import dumps, format_dataframe_rows_to_dict
+from ._utils import format_dataframe_rows_to_dict, dumps
 import traceback
 
 tickers = ['XYZ']
@@ -65,18 +64,42 @@ def run_exchange(time_channel, exchange_channel):
         time_puller = Puller(time_channel)
         exchange.datetime = time_puller.pull()
         exchange.create_asset(tickers[0]) 
-        responses = Responses(exchange)
-        responder = Responder(exchange_channel, responses.topics)
-        
-        sleep(.5)
+        responder = Responder(exchange_channel)
+
+        def callback(msg):
+            # print('reveived message', msg)
+            if msg['topic'] == 'create_asset': return dumps(exchange.create_asset(msg['ticker'], msg['seed_price'], msg['seed_bid'], msg['seed_ask']))
+            elif msg['topic'] == 'limit_buy': return dumps(exchange.limit_buy(msg['ticker'], msg['price'], msg['qty'], msg['creator'], msg['fee']).to_dict())
+            elif msg['topic'] == 'limit_sell': return dumps(exchange.limit_sell(msg['ticker'], msg['price'], msg['qty'], msg['creator'], msg['fee']).to_dict())
+            elif msg['topic'] == 'market_buy': return exchange.market_buy(msg['ticker'], msg['qty'], msg['buyer'], msg['fee'])
+            elif msg['topic'] == 'market_sell': return exchange.market_sell(msg['ticker'], msg['qty'], msg['seller'], msg['fee'])
+            elif msg['topic'] == 'cancel_order': return exchange.cancel_order(msg['order_id'])
+            elif msg['topic'] == 'cancel_all_orders': return exchange.cancel_all_orders(msg['agent'], msg['ticker'])
+            elif msg['topic'] == 'candles': return exchange.get_price_bars(ticker=msg['ticker'], bar_size=msg['interval']).head(msg['limit'])
+            # elif msg['topic'] == 'mempool': return exchange.mempool(msg['limit'])
+            elif msg['topic'] == 'order_book': return exchange.get_order_book(msg['ticker']).to_dict()
+            elif msg['topic'] == 'latest_trade': return dumps(exchange.get_latest_trade(msg['ticker']))
+            elif msg['topic'] == 'trades': return exchange.trades(msg['ticker']).head(msg['limit'])
+            elif msg['topic'] == 'quotes': return exchange.get_quotes(msg['ticker'])
+            elif msg['topic'] == 'best_bid': return exchange.get_best_bid(msg['ticker']).to_dict()
+            elif msg['topic'] == 'best_ask': return exchange.get_best_ask(msg['ticker']).to_dict()
+            elif msg['topic'] == 'midprice': return exchange.get_midprice(msg['ticker'])
+            elif msg['topic'] == 'cash': return exchange.get_cash(msg['agent'])
+            elif msg['topic'] == 'assets': return exchange.get_assets(msg['agent'])
+            elif msg['topic'] == 'register_agent': return exchange.register_agent(msg['name'], msg['initial_cash'])
+            else: return f'unknown topic {msg["topic"]}'
+
+         
         while True:
+            
             # listen for orders and cancellations here on the exchange channel...
             # when a message is received, call the appropriate exchange method
             exchange.datetime = time_puller.pull()
-            # print(exchange.datetime)
-            responder.respond()
-            # TODO: may need to make the responder non blocking, or threaded...
-            pass
+            msg = responder.respond(callback)
+            if(msg == None): 
+                break
+            
+
     except Exception as e:
         print("[Exchange Error] ", e)
         return None  
@@ -98,8 +121,14 @@ def run_agent(time_channel, exchange_channel):
 def agent_episodes(time_channel, agent_channel):
     try:
         episodes = 1000
-        maker =  NaiveMarketMaker(name='market_maker', tickers=tickers, aum=1_000, spread_pct=0.005, qty_per_order=4, requester=Requests(agent_channel))
-        taker = RandomMarketTaker(name='market_taker', tickers=tickers, aum=1_000, prob_buy=.2, prob_sell=.2, qty_per_order=1, requester=Requests(agent_channel) )
+        maker =  NaiveMarketMaker(name='market_maker', tickers=tickers, aum=1_000, spread_pct=0.005, qty_per_order=4, requester=Requests(Requester(channel=agent_channel)))
+        taker = RandomMarketTaker(name='market_taker', tickers=tickers, aum=1_000, prob_buy=.2, prob_sell=.2, qty_per_order=1, requester=Requests(Requester(channel=agent_channel)))
+        maker_registered = maker.register()
+        taker_registered = taker.register()
+        if not maker_registered or not taker_registered:
+            print('agent registration failed')
+            return None
+        sleep(.5)
         for i in range(0, episodes):
             maker.next()
             taker.next()
@@ -108,8 +137,6 @@ def agent_episodes(time_channel, agent_channel):
         time_puller = Puller(time_channel)
         end_time = time_puller.pull()
         # portfolio=Portfolio(from_date=start_time)
-
-
         # mt_holdings = portfolio.get_portfolio_history('market_taker')
         # mm_holdings = portfolio.get_portfolio_history('market_maker')
     except Exception as e:
@@ -134,9 +161,9 @@ def main():
         clock_getter.start()
         broker_process.start()
         exchange_process.start()
-
+        
         for i in range(0,num_agents):
-            agent_process = Process(target=agent_episodes, args=(time_channel, exchange_channel ))
+            agent_process = Process(target=agent_episodes, args=(time_channel, agent_channel ))
             agent_process.start()
 
         while True:

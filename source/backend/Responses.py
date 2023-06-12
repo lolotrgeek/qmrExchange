@@ -19,14 +19,11 @@ class Responses():
             elif type(response) is not dict:
                 raise Exception(f'{response} Not dict...')
             else:
+                print(response)
                 return response
-        # except ZMQError as e:
-        #     tries += 1
-        #     sleep(0.1)
-        #     return self.make_response(response, tries)
         except Exception as e:
-            print("[Response Error] ", e)
-            traceback.print_exc()
+            # print("[Response Error] ", e)
+            # traceback.print_exc()
             tries += 1
             sleep(0.1)
             return self.make_response(response, tries)
@@ -108,7 +105,7 @@ class Responses():
         return self.make_response({"bids": format_dataframe_rows_to_dict(order_book.df['bids']), "asks": format_dataframe_rows_to_dict(order_book.df['asks'])})
 
     def get_latest_trade_response(self, msg):
-        print("get_latest_trade_response hears", msg)
+        print(msg)
         return self.make_response(self.exchange.get_latest_trade(msg['ticker']))
     
     def get_trades_response(self, msg):
