@@ -6,7 +6,6 @@ from .LimitOrder import LimitOrder
 from .OrderSide import OrderSide
 from .Blockchain import Blockchain
 from .Fees import Fees
-from .Market import Market
 
 # Creates an Orderbook and Assets
 class Exchange():
@@ -47,7 +46,7 @@ class Exchange():
         Returns:
             OrderBook: the orderbook of the asset.
         """
-        return self.books[ticker].df()
+        return self.books[ticker]
      
     def get_latest_trade(self, ticker:str) -> Trade:
         """Retrieves the most recent trade of a given asset
@@ -58,7 +57,8 @@ class Exchange():
         Returns:
             Trade
         """
-        return next(trade for trade in self.trade_log[::-1] if trade.ticker == ticker).to_dict()
+        latest_trade = next(trade for trade in self.trade_log[::-1] if trade.ticker == ticker).to_dict()
+        return latest_trade
 
     def get_quotes(self, ticker):
         try:
@@ -240,12 +240,12 @@ class Exchange():
             if ask:
                 self.exchange.books[book].asks.pop(ask[0])
                 return ask
-        return None
+        return True
 
     def cancel_all_orders(self, agent, ticker):
         self.books[ticker].bids = [b for b in self.books[ticker].bids if b.creator != agent]
         self.books[ticker].asks = [a for a in self.books[ticker].asks if a.creator != agent]
-        return None
+        return True
 
     def market_buy(self, ticker: str, qty: int, buyer: str, fee=0):
         for idx, ask in enumerate(self.books[ticker].asks):
@@ -259,8 +259,9 @@ class Exchange():
                 break
         self.books[ticker].asks = [
             ask for ask in self.books[ticker].asks if ask.qty > 0]
+        return True
 
-    def market_sell(self, ticker: str, qty: int, seller: str, fee=0):
+    def market_sell(self, ticker: str, qty: int, seller: str, fee=0.0):
         for idx, bid in enumerate(self.books[ticker].bids):
             trade_qty = min(bid.qty, qty)
             self.books[ticker].bids[idx].qty -= trade_qty
@@ -272,6 +273,7 @@ class Exchange():
                 break
         self.books[ticker].bids = [
             bid for bid in self.books[ticker].bids if bid.qty > 0]
+        return True
 
     @property
     def trades(self):
@@ -282,6 +284,8 @@ class Exchange():
 
     def register_agent(self, name, initial_cash):
         self.agents.append({'name':name,'cash':initial_cash,'_transactions':[]})
+        print(self.agents)
+        return True
 
     def get_cash(self, agent):
         return self.get_agent(agent).cash
@@ -311,7 +315,7 @@ class Exchange():
             seller._transactions.append({'dt':self.dt,'cash_flow':transaction.amount,'ticker':transaction.ticker,'qty':transaction.amount})
 
     def get_agent(self, agent_name):
-        return next((d for (index, d) in enumerate(self.agents) if d.name == agent_name), None)
+        return next((d for (index, d) in enumerate(self.agents) if d['name'] == agent_name), None)
 
     def __get_agent_index(self,agent_name):
-        return next((index for (index, d) in enumerate(self.agents) if d.name == agent_name), None)
+        return next((index for (index, d) in enumerate(self.agents) if d['name'] == agent_name), None)
