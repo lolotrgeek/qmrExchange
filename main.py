@@ -15,8 +15,8 @@ if __name__ == '__main__':
         print('done...')
         exit(0)
     except:
-        print(sys.exc_info()[2])
-        print(traceback.format_exc())
+        # print(sys.exc_info()[2])
+        # print(traceback.format_exc())
         exit(0)
         
 

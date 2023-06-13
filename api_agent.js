@@ -14,7 +14,7 @@ let functions = [
     get_trades
 ]
 
-function responses() {
+function hammer() {
     const start = Date.now()
     let runs = 100
     let run = 0
@@ -83,4 +83,4 @@ function get_trades(ticker='XYZ') {
 }
 
 
-responses()
+hammer()

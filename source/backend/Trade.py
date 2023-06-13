@@ -7,7 +7,7 @@ class Trade():
         self.price = price
         self.buyer = buyer
         self.seller = seller
-        self.dt = dt if dt else datetime.now()
+        self.dt = dt
         self.fee = fee
 
     def __repr__(self):

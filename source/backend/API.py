@@ -1,48 +1,18 @@
 from flask import Flask, jsonify, request
 from .Requests import Requests
 import flask_monitoringdashboard as dashboard
-from time import sleep
-import traceback
 
-def API(conn):
+def API(requester):
     app = Flask(__name__)
     dashboard.bind(app)
-    reqs = Requests(conn)
-
-    max_tries = 5
-
-    def make_request(request, key:str, tries=0):
-        sleep(0.1)
-        if tries >= max_tries:
-            error = {}
-            error[key] = {'error': 'Max tries reached.'}
-            return error
-        conn.put(request)
-        try:
-            msg = conn.get()
-            if msg is None or 'error' in msg:
-                raise Exception('Waiting...')
-            elif type(msg) is not dict:
-                raise Exception('Waiting...')
-            elif msg.get(key) is None:
-                raise Exception('Waiting...')
-            else:
-                return msg[key]
-        except Exception as e:
-            if e != 'Waiting...':
-                print(f"API Error {key}:", e)
-                traceback.print_exc()
-            tries += 1
-            return make_request(request, key, tries)
-
-
+    requests = Requests(requester)
     @app.route('/')
     def index():
         return "hello"
 
     @app.route('/api/v1/sim_time', methods=['GET'])
     def get_sim_time():
-        return make_request({'get_sim_time': True}, 'sim_time')
+        return jsonify({'sim_time': "TODO: req from clock process"})
 
     @app.route('/api/v1/candles', methods=['GET'])
     def candles():
@@ -55,7 +25,7 @@ def API(conn):
             limit = 20
         if (ticker is None or ticker == ""):
             ticker = 'XYZ'
-        return make_request({'get_candles': {'ticker': ticker, 'interval': interval, 'limit': limit}}, 'candles')
+        return requests.get_candles(ticker, interval, limit)
 
     @app.route('/api/v1/create_asset', methods=['POST'])
     def create_asset():
@@ -64,7 +34,7 @@ def API(conn):
         seed_price = data.get('seed_price', 100)
         seed_bid = data.get('seed_bid', 0.99)
         seed_ask = data.get('seed_ask', 1.01)
-        return make_request({'create_asset': {'ticker': ticker, 'seed_price': seed_price, 'seed_bid': seed_bid, 'seed_ask': seed_ask}}, 'created_asset')
+        return requests.create_asset(ticker, seed_price, seed_bid, seed_ask)
 
 
     @app.route('/api/v1/crypto/get_mempool', methods=['GET'])
@@ -72,15 +42,14 @@ def API(conn):
         limit = request.args.get('limit', type=int)
         if (limit is None):
             limit = 20
-        mempool = reqs.get_mempool(limit)
-        return make_request({'get_mempool': {'limit': limit}}, 'mempool')
+        return jsonify({'TODO': 'req from mempool process'})
 
     @app.route('/api/v1/get_order_book', methods=['GET'])
     def get_order_book():
         ticker = request.args.get('ticker')
         if (ticker is None or ticker == ""):
             return jsonify({'message': 'Ticker not found.'})
-        return make_request({'get_order_book': {'ticker': ticker}}, 'order_book')
+        return requests.get_order_book(ticker)
 
 
     @app.route('/api/v1/get_latest_trade', methods=['GET'])
@@ -88,7 +57,7 @@ def API(conn):
         ticker = request.args.get('ticker')
         if (ticker is None or ticker == ""):
             return jsonify({'message': 'Ticker not found.'})
-        return make_request({'get_latest_trade': {'ticker': ticker}}, 'latest_trade')
+        return requests.get_latest_trade(ticker)
 
 
     @app.route('/api/v1/get_trades', methods=['GET'])
@@ -99,7 +68,7 @@ def API(conn):
             return jsonify({'message': 'Ticker not found.'})
         if (limit is None):
             limit = 20
-        return make_request({'get_trades': {'ticker': ticker, 'limit': limit}}, 'trades')
+        return requests.get_trades(ticker, limit)
 
 
     @app.route('/api/v1/get_quotes', methods=['GET'])
@@ -107,7 +76,7 @@ def API(conn):
         ticker = request.args.get('ticker')
         if (ticker is None or ticker == ""):
             return jsonify({'message': 'Ticker not found.'})
-        return make_request({'get_quotes': {'ticker': ticker}}, 'quotes')
+        return requests.get_quotes(ticker)
         
 
     @app.route('/api/v1/get_best_bid', methods=['GET'])
@@ -115,7 +84,7 @@ def API(conn):
         ticker = request.args.get('ticker')
         if (ticker is None or ticker == ""):
             return jsonify({'message': 'Ticker not found.'})
-        return make_request({'get_best_bid': {'ticker': ticker}}, 'best_bid')
+        return requests.get_best_bid(ticker)
 
 
     @app.route('/api/v1/get_best_ask', methods=['GET'])
@@ -123,15 +92,14 @@ def API(conn):
         ticker = request.args.get('ticker')
         if (ticker is None or ticker == ""):
             return jsonify({'message': 'Ticker not found.'})
-        return make_request({'get_best_ask': {'ticker': ticker}}, 'best_ask')
-
+        return requests.get_best_ask(ticker)
 
     @app.route('/api/v1/get_midprice', methods=['GET'])
     def get_midprice():
         ticker = request.args.get('ticker')
         if (ticker is None or ticker == ""):
             return jsonify({'message': 'Ticker not found.'})
-        return make_request({'get_midprice': {'ticker': ticker}}, 'midprice')
+        return jsonify({'midprice': requests.get_midprice(ticker)})
 
     @app.route('/api/v1/limit_buy', methods=['POST'])
     def limit_buy():
@@ -141,7 +109,7 @@ def API(conn):
         qty = data['qty']
         creator = data['creator']
         fee = data['fee']
-        return make_request({'limit_buy': {'ticker': ticker, 'price': price, 'qty': qty, 'creator': creator, 'fee': fee}}, 'limit_buy_placed') 
+        return requests.limit_buy(ticker, price, qty, creator, fee)
 
 
     @app.route('/api/v1/limit_sell', methods=['POST'])
@@ -152,14 +120,14 @@ def API(conn):
         qty = data['qty']
         creator = data['creator']
         fee = data['fee']
-        return make_request({'limit_sell': {'ticker': ticker, 'price': price, 'qty': qty, 'creator': creator, 'fee': fee}}, 'limit_sell_placed')
+        return requests.limit_sell(ticker, price, qty, creator, fee)
 
 
     @app.route('/api/v1/cancel_order', methods=['POST'])
     def cancel_order():
         data = request.get_json()
         order_id = data['id']
-        return make_request({'cancel_order': {'order_id': order_id}}, 'order_cancelled')
+        return requests.cancel_order(order_id)
 
 
     @app.route('/api/v1/cancel_all_orders', methods=['POST'])
@@ -167,7 +135,7 @@ def API(conn):
         data = request.get_json()
         agent = data['agent']
         ticker = data['ticker']
-        return make_request({'cancel_all_orders': {'ticker': ticker, 'agent': agent}}, 'orders_cancelled')
+        return requests.cancel_all_orders(ticker, agent)
 
 
     @app.route('/api/v1/market_buy', methods=['POST'])
@@ -177,7 +145,7 @@ def API(conn):
         qty = data['qty']
         buyer = data['buyer']
         fee = data['fee']
-        return make_request({'market_buy': {'ticker': ticker, 'qty': qty, 'buyer': buyer, 'fee': fee}}, 'market_buy_placed')
+        return requests.market_buy(ticker, qty, buyer, fee)
 
 
     @app.route('/api/v1/market_sell', methods=['POST'])
@@ -187,7 +155,6 @@ def API(conn):
         qty = data['qty']
         seller = data['seller']
         fee = data['fee']
-        return make_request({'market_sell': {'ticker': ticker, 'qty': qty, 'seller': seller, 'fee': fee}}, 'market_sell_placed')
-
+        return requests.market_sell(ticker, qty, seller, fee)
 
     return app

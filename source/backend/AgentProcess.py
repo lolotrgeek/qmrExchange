@@ -64,7 +64,7 @@ class Agent():
         Returns:
             float: the current midprice
         """
-        return self.get_midprice(ticker)
+        return self.requests.get_midprice(ticker)
 
     def get_order_book(self,ticker):
         return self.requests.get_order_book(ticker)
@@ -152,11 +152,14 @@ class Agent():
         """
         self.requests.cancel_all_orders(ticker, self.name)
 
-    def get_price_bars(self, bar_size='1D', limit=20):
-        return  self.requests.get_price_bars(bar_size, limit=limit)
+    def get_price_bars(self,ticker, bar_size='1D', limit=20):
+        return  self.requests.get_price_bars(ticker, bar_size, limit=limit)
     
     def get_cash(self):
         return self.requests.get_cash(self.name)
+    
+    def get_assets(self):
+        return self.requests.get_assets(self.name)
     
     def register(self):
         return self.requests.register_agent(self.name, self.initial_cash)

@@ -79,30 +79,6 @@ class Exchange():
         }
         return quotes
 
-    def get_best_bid(self, ticker:str) -> LimitOrder:
-        """retrieves the current best bid in the orderbook of an asset
-
-        Args:
-            ticker (str): the ticker of the asset.
-
-        Returns:
-            LimitOrder
-        """
-        if self.books[ticker].bids:
-            return self.books[ticker].bids[0]
-
-    def get_best_ask(self, ticker:str) -> LimitOrder:
-        """retrieves the current best ask in the orderbook of an asset
-
-        Args:
-            ticker (str): the ticker of the asset.
-
-        Returns:
-            LimitOrder
-        """
-        if self.books[ticker].asks:
-            return self.books[ticker].asks[0]
-
     def get_midprice(self, ticker:str) -> float:
         """Returns the current midprice of the best bid and ask quotes.
 
@@ -113,9 +89,9 @@ class Exchange():
             float: the current midprice
         """
         quotes = self.get_quotes(ticker)
-        return (quotes['bid_p'] + quotes['ask_p']) / 2
+        return {"midprice" :(quotes['bid_p'] + quotes['ask_p']) / 2}
 
-    def get_trades(self, ticker:str, limit=20) -> pd.DataFrame:
+    def get_trades(self, ticker:str, limit=20) -> list:
         """Retrieves all past trades of a given asset
 
         Args:
@@ -124,7 +100,9 @@ class Exchange():
         Returns:
             pd.DataFrame: a dataframe containing all trades
         """
-        return pd.DataFrame.from_records([t.to_dict() for t in self.trade_log if t.ticker == ticker]).set_index('dt').sort_index().head(limit).to_json()
+        trades = pd.DataFrame.from_records([t.to_dict() for t in self.trade_log if t.ticker == ticker]).head(limit)
+        print(trades)
+        return trades
     
     def get_price_bars(self, ticker, limit=20, bar_size='1D'):
         trades = self.trades
@@ -134,10 +112,9 @@ class Exchange():
         df.rename(columns={'qty':'volume'},inplace=True)
         return df.head(limit).to_json()
     
-    def _process_trade(self, ticker, qty, price, buyer, seller, fee=0):
-        self.trade_log.append(
-            Trade(ticker, qty, price, buyer, seller,self.datetime)
-        )
+    def _process_trade(self, ticker, qty, price, buyer, seller, fee=0.0):
+        trade = Trade(ticker, qty, price, buyer, seller, self.datetime, fee=fee)
+        self.trade_log.append(trade)
         if(self.crypto):
             #NOTE: the `fee` is the network fee and the exchange fee since the exchange fee is added to the transaction before it is added to the blockchain
             # while not how this works, this is makes calulating the overall fee easier for the simulator
@@ -160,8 +137,10 @@ class Exchange():
         Returns:
             LimitOrder
         """
-        if self.books[ticker].asks:
+        if self.books[ticker].asks and self.books[ticker].asks[0]:
             return self.books[ticker].asks[0]
+        else:
+            return LimitOrder(ticker, 0, 0, 'null_quote', OrderSide.SELL, self.datetime)
 
     def get_best_bid(self, ticker:str) -> LimitOrder:
         """retrieves the current best bid in the orderbook of an asset
@@ -172,8 +151,10 @@ class Exchange():
         Returns:
             LimitOrder
         """
-        if self.books[ticker].bids:
+        if self.books[ticker].bids and self.books[ticker].bids[0]:
             return self.books[ticker].bids[0]
+        else:
+            return LimitOrder(ticker, 0, 0, 'null_quote', OrderSide.BUY, self.datetime)
 
     def limit_buy(self, ticker: str, price: float, qty: int, creator: str, fee=0):
         if not self.crypto:
@@ -181,7 +162,7 @@ class Exchange():
         # check if we can match trades before submitting the limit order
         while qty > 0:
             best_ask = self.get_best_ask(ticker)
-            if best_ask and price >= best_ask.price:
+            if best_ask.creator != 'null_quote' and price >= best_ask.price:
                 trade_qty = min(qty, best_ask.qty)
                 taker_fee = self.fees.taker_fee(qty)
                 self.fees.total_fee_revenue += taker_fee
@@ -209,7 +190,7 @@ class Exchange():
         # check if we can match trades before submitting the limit order
         while qty > 0:
             best_bid = self.get_best_bid(ticker)
-            if best_bid and price <= best_bid.price:
+            if best_bid.creator != 'null_quote' and price <= best_bid.price:
                 trade_qty = min(qty, best_bid.qty)
                 taker_fee = self.fees.taker_fee(qty)
                 self.fees.total_fee_revenue += taker_fee
@@ -232,22 +213,22 @@ class Exchange():
         return new_order
 
     def cancel_order(self, id):
-        for book in self.exchange.books:
-            bid = next(([idx,o] for idx, o in enumerate(self.exchange.books[book].bids) if o.id == id),None)
+        for book in self.books:
+            bid = next(([idx,o] for idx, o in enumerate(self.books[book].bids) if o.id == id),None)
             if bid:
-                self.exchange.books[book].bids[bid[0]]
-                self.exchange.books[book].bids.pop(bid[0])
-                return bid
-            ask = next(([idx,o] for idx, o in enumerate(self.exchange.books[book].asks) if o.id == id),None)
+                self.books[book].bids[bid[0]]
+                self.books[book].bids.pop(bid[0])
+                # return bid
+            ask = next(([idx,o] for idx, o in enumerate(self.books[book].asks) if o.id == id),None)
             if ask:
-                self.exchange.books[book].asks.pop(ask[0])
-                return ask
-        return True
+                self.books[book].asks.pop(ask[0])
+                # return ask
+        return {"cancelled_order": id}
 
     def cancel_all_orders(self, agent, ticker):
         self.books[ticker].bids = [b for b in self.books[ticker].bids if b.creator != agent]
         self.books[ticker].asks = [a for a in self.books[ticker].asks if a.creator != agent]
-        return True
+        return {"cancelled_all_orders": ticker}
 
     def market_buy(self, ticker: str, qty: int, buyer: str, fee=0.0):
         for idx, ask in enumerate(self.books[ticker].asks):
@@ -262,7 +243,7 @@ class Exchange():
                 break
         self.books[ticker].asks = [
             ask for ask in self.books[ticker].asks if ask.qty > 0]
-        return True
+        return {"market_buy": ticker }
 
     def market_sell(self, ticker: str, qty: int, seller: str, fee=0.0):
         for idx, bid in enumerate(self.books[ticker].bids):
@@ -277,7 +258,7 @@ class Exchange():
                 break
         self.books[ticker].bids = [
             bid for bid in self.books[ticker].bids if bid.qty > 0]
-        return True
+        return {"market_sell": ticker}
 
     @property
     def trades(self):
@@ -287,15 +268,16 @@ class Exchange():
         self.datetime = dt
 
     def register_agent(self, name, initial_cash):
+        #TODO: use an agent class???
         self.agents.append({'name':name,'cash':initial_cash,'_transactions':[]})
         print(self.agents)
-        return True
+        return {'registered_agent':name}
 
-    def get_cash(self, agent):
-        return self.get_agent(agent).cash
+    def get_cash(self, agent_name):
+        return {'cash':self.get_agent(agent_name)['cash']}
     
     def get_assets(self, agent):
-        return self.get_agent(agent)._transactions
+        return {'assets' :self.get_agent(agent)['_transactions']}
     
     def __update_agents_cash(self, transaction):
         for side in transaction:

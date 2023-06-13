@@ -1,6 +1,5 @@
 import traceback
 import zmq
-import errno
 
 class Requester():
     def __init__(self, channel='5556'):
@@ -19,13 +18,17 @@ class Requester():
                 return self.socket.recv_json(zmq.DONTWAIT)
             else:
                 return None
+        except zmq.ZMQError as e:
+            return None            
         except Exception as e:
             print("[Requester Error]", e, "Request:", msg)
-            print(traceback.format_exc())
+            if e != None or e != "None": 
+                print(traceback.format_exc())
             return None
-        except KeyboardInterrupt:
-            self.socket.close()
-            self.context.term()
+
+    def close(self):
+        self.socket.close()
+        self.context.term()
 
 class Responder():
     def __init__(self, channel='5557'):
@@ -39,13 +42,16 @@ class Responder():
             response = callback(msg)
             self.socket.send_json(response)
             return response
+        except zmq.ZMQError as e:
+            self.socket.close()
+            self.context.term()
+            return None
         except Exception as e:
             print("[Response Error]", e, "Request:", msg)
             print(traceback.format_exc())
+            self.socket.send_json(None)
             return None
-        except KeyboardInterrupt:
-            self.socket.close()
-            self.context.term()
+
 
 
 class Broker():
@@ -100,6 +106,9 @@ class Puller():
     def request(self, topic, args=None):
         return self.pull()
 
+    def close(self):
+        self.socket.close()
+        self.context.term()
 
 class Router():
     def __init__(self, producer='5558', consumer='5556'):

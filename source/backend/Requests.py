@@ -1,6 +1,6 @@
 from time import sleep
-from .Messaging import Requester
 import json
+import traceback
 
 class Requests():
     def __init__(self, requester):
@@ -9,29 +9,34 @@ class Requests():
         self.max_tries = 1
         
     def make_request(self, topic:str, message:dict, factory, tries=0):
-        if tries >= self.max_tries:
-            error = {}
-            error[topic] = {'error': 'Max tries reached.'}
-            return error
         try:
             message['topic'] = topic
-            msg = factory.request(message)
-            if msg is None or 'error' in msg:
-                raise Exception(f'{topic} error {msg}')
+            msg = self.requester.request(message)
+            if msg is None:
+                raise Exception(f'{topic} is None, {msg}')
             elif type(msg) is str:
                 return json.loads(msg)
             elif type(msg) is not dict:
-                raise Exception(f'{topic} got type {type(msg)} expected dict.')
+                raise Exception(f'{topic} got type {type(msg)} expected dict. Message{msg}')
+            elif 'error' in msg:
+                raise Exception(f'{topic} error, {msg}')
             else:
                 return msg
         except Exception as e:
             tries += 1
-            if(tries == self.max_tries - 1):
-                print("[Request Error] ", e, "Message", msg)
+            if tries >= self.max_tries:
+                print("[Request Error] ", e)
+                error = {}
+                error[topic] = f"[Request Error] {e}"
+                if e != None or e != "None": 
+                    print(traceback.format_exc())
+                self.requester.close()
+                return error
             sleep(0.1)
             return self.make_request(topic, message, factory, tries)
+
     
-    def get_candles(self, ticker, interval, limit):
+    def get_price_bars(self, ticker, interval, limit):
         return self.make_request('candles', {'ticker': ticker, 'interval': interval, 'limit': limit}, self.requester)
 
     def create_asset(self, ticker, seed_price, seed_bid, seed_ask):
@@ -48,7 +53,7 @@ class Requests():
         return self.make_request('latest_trade', {'ticker': ticker}, self.requester)
 
     def get_trades(self, ticker, limit):
-        return self.make_request('trades', {'ticker': ticker, 'limit': limit}, 'trades', self.requester)
+        return self.make_request('trades', {'ticker': ticker, 'limit': limit}, self.requester)
 
     def get_quotes(self, ticker):
         return self.make_request('quotes', {'ticker': ticker}, self.requester)
@@ -68,8 +73,8 @@ class Requests():
     def limit_sell(self, ticker, price, quantity, creator, fee=0.0):
         return self.make_request('limit_sell', {'ticker': ticker, 'price': price, 'qty': quantity, 'creator': creator, 'fee': fee}, self.requester)
     
-    def cancel_order(self, order_id):
-        return self.make_request('cancel_order', {'order_id': order_id}, self.requester)
+    def cancel_order(self, id):
+        return self.make_request('cancel_order', {'order_id': id}, self.requester)
 
     def cancel_all_orders(self, ticker, agent):
         return self.make_request('cancel_all_orders', {'ticker': ticker, 'agent': agent}, self.requester)

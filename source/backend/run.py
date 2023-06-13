@@ -1,5 +1,5 @@
 
-from .Agents import NaiveMarketMaker, RandomMarketTaker
+from .Agents import NaiveMarketMaker, RandomMarketTaker, TestAgent
 from .Exchange import Exchange
 from time import sleep
 from multiprocessing import Process
@@ -11,7 +11,7 @@ from .Requests import Requests
 from .Portfolio import Portfolio
 from datetime import datetime
 from random import randint
-from ._utils import format_dataframe_rows_to_dict, dumps
+from ._utils import dumps
 import traceback
 
 tickers = ['XYZ']
@@ -62,12 +62,22 @@ def run_exchange(time_channel, exchange_channel):
     try: 
         exchange = Exchange(datetime=start_time)
         time_puller = Puller(time_channel)
-        exchange.datetime = time_puller.pull()
         exchange.create_asset(tickers[0]) 
         responder = Responder(exchange_channel)
 
+        def get_time():
+            get_time = time_puller.pull()
+            if get_time == None: 
+                pass
+            elif type(get_time) is dict and 'time' not in get_time:
+                pass
+            elif type(get_time['time']) is dict:
+                pass
+            else: 
+                exchange.datetime = get_time['time']            
+
         def callback(msg):
-            # print('reveived message', msg)
+            print('reveived message', msg)
             if msg['topic'] == 'create_asset': return dumps(exchange.create_asset(msg['ticker'], msg['seed_price'], msg['seed_bid'], msg['seed_ask']))
             elif msg['topic'] == 'limit_buy': return dumps(exchange.limit_buy(msg['ticker'], msg['price'], msg['qty'], msg['creator'], msg['fee']).to_dict())
             elif msg['topic'] == 'limit_sell': return dumps(exchange.limit_sell(msg['ticker'], msg['price'], msg['qty'], msg['creator'], msg['fee']).to_dict())
@@ -75,26 +85,23 @@ def run_exchange(time_channel, exchange_channel):
             elif msg['topic'] == 'market_sell': return exchange.market_sell(msg['ticker'], msg['qty'], msg['seller'], msg['fee'])
             elif msg['topic'] == 'cancel_order': return exchange.cancel_order(msg['order_id'])
             elif msg['topic'] == 'cancel_all_orders': return exchange.cancel_all_orders(msg['agent'], msg['ticker'])
-            elif msg['topic'] == 'candles': return exchange.get_price_bars(ticker=msg['ticker'], bar_size=msg['interval']).head(msg['limit'])
+            elif msg['topic'] == 'candles': return exchange.get_price_bars(ticker=msg['ticker'], bar_size=msg['interval'], limit=msg['limit'])
             # elif msg['topic'] == 'mempool': return exchange.mempool(msg['limit'])
             elif msg['topic'] == 'order_book': return exchange.get_order_book(msg['ticker']).to_dict()
             elif msg['topic'] == 'latest_trade': return dumps(exchange.get_latest_trade(msg['ticker']))
-            elif msg['topic'] == 'trades': return exchange.trades(msg['ticker']).head(msg['limit'])
+            elif msg['topic'] == 'trades': return exchange.get_trades(msg['ticker']).to_json()
             elif msg['topic'] == 'quotes': return exchange.get_quotes(msg['ticker'])
-            elif msg['topic'] == 'best_bid': return exchange.get_best_bid(msg['ticker']).to_dict()
-            elif msg['topic'] == 'best_ask': return exchange.get_best_ask(msg['ticker']).to_dict()
+            elif msg['topic'] == 'best_bid': return dumps(exchange.get_best_bid(msg['ticker']).to_dict())
+            elif msg['topic'] == 'best_ask': return dumps(exchange.get_best_ask(msg['ticker']).to_dict())
             elif msg['topic'] == 'midprice': return exchange.get_midprice(msg['ticker'])
             elif msg['topic'] == 'cash': return exchange.get_cash(msg['agent'])
             elif msg['topic'] == 'assets': return exchange.get_assets(msg['agent'])
             elif msg['topic'] == 'register_agent': return exchange.register_agent(msg['name'], msg['initial_cash'])
+            #TODO: exchange topic to get general exchange data
             else: return f'unknown topic {msg["topic"]}'
 
-         
         while True:
-            
-            # listen for orders and cancellations here on the exchange channel...
-            # when a message is received, call the appropriate exchange method
-            exchange.datetime = time_puller.pull()
+            get_time()
             msg = responder.respond(callback)
             if(msg == None): 
                 break
@@ -102,9 +109,11 @@ def run_exchange(time_channel, exchange_channel):
 
     except Exception as e:
         print("[Exchange Error] ", e)
+        print(traceback.print_exc())
         return None  
     except KeyboardInterrupt:
         return None
+
 def run_agent(time_channel, exchange_channel):
     try:
         agent = None
@@ -133,10 +142,12 @@ def agent_episodes(time_channel, agent_channel):
         for i in range(0, episodes):
             maker.next()
             taker.next()
-            print(f'episode {i} complete')
+            # print(f'episode {i} complete')
+
 
         time_puller = Puller(time_channel)
         end_time = time_puller.pull()
+        print("episodes complete", end_time)
         # portfolio=Portfolio(from_date=start_time)
         # mt_holdings = portfolio.get_portfolio_history('market_taker')
         # mm_holdings = portfolio.get_portfolio_history('market_maker')
@@ -145,6 +156,26 @@ def agent_episodes(time_channel, agent_channel):
         traceback.print_exc()
         return None
     except KeyboardInterrupt:
+        return None
+
+def agent_test(time_channel, agent_channel):
+    try:
+        requester = Requests(Requester(channel=agent_channel))
+        agent = TestAgent(requester=requester)
+        registered = agent.register()
+        if registered is None:
+            raise Exception("Agent not registered")
+        agent.next()
+    except KeyboardInterrupt:
+        return None
+
+def run_api(agent_channel):
+    try:
+        requester = Requester(agent_channel)
+        api = API(requester)
+        api.run()
+    except Exception as e:
+        print("[API Error] ", e)
         return None
 
 def main():
@@ -158,15 +189,17 @@ def main():
         clock_getter = Process(target=get_clock, args=(time_channel, ))
         broker_process = Process(target=run_broker, args=(agent_channel, exchange_channel ))
         exchange_process = Process(target=run_exchange, args=(time_channel, exchange_channel ))
+        api_process = Process(target=run_api, args=(agent_channel,))
 
         clock_router.start()
         clock_process.start()
         clock_getter.start()
         broker_process.start()
         exchange_process.start()
+        # api_process.start()
         
         for i in range(0,num_agents):
-            agent_process = Process(target=agent_episodes, args=(time_channel, agent_channel ))
+            agent_process = Process(target=agent_test, args=(time_channel, agent_channel ))
             agent_process.start()
 
         while True:
@@ -182,12 +215,13 @@ def main():
         clock_getter.terminate()
         exchange_process.terminate()
         broker_process.terminate()
+        api_process.terminate()
         clock_process.join()
         clock_router.join()
         clock_getter.join()
         exchange_process.join()
         broker_process.join()
-
+        api_process.join()
         print("processes successfully closed")
 
     finally:
