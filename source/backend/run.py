@@ -103,7 +103,7 @@ def run_exchange(time_channel, exchange_channel):
             elif msg['topic'] == 'cancel_all_orders': return exchange.cancel_all_orders(msg['agent'], msg['ticker'])
             elif msg['topic'] == 'candles': return exchange.get_price_bars(ticker=msg['ticker'], bar_size=msg['interval'], limit=msg['limit'])
             # elif msg['topic'] == 'mempool': return exchange.mempool(msg['limit'])
-            elif msg['topic'] == 'order_book': return exchange.get_order_book(msg['ticker']).to_dict()
+            elif msg['topic'] == 'order_book': return dumps(exchange.get_order_book(msg['ticker']).to_dict())
             elif msg['topic'] == 'latest_trade': return dumps(exchange.get_latest_trade(msg['ticker']))
             elif msg['topic'] == 'trades': return exchange.get_trades(msg['ticker']).to_json()
             elif msg['topic'] == 'quotes': return exchange.get_quotes(msg['ticker'])
