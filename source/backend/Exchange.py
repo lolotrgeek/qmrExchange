@@ -6,7 +6,7 @@ from .LimitOrder import LimitOrder
 from .OrderSide import OrderSide
 from .Blockchain import Blockchain
 from .Fees import Fees
-
+from datetime import datetime
 # Creates an Orderbook and Assets
 class Exchange():
     def __init__(self, datetime= None):
@@ -101,12 +101,13 @@ class Exchange():
             pd.DataFrame: a dataframe containing all trades
         """
         trades = pd.DataFrame.from_records([t.to_dict() for t in self.trade_log if t.ticker == ticker]).head(limit)
-        print(trades)
         return trades
     
     def get_price_bars(self, ticker, limit=20, bar_size='1D'):
+        #TODO: not resampling correctly
         trades = self.trades
         trades = trades[trades['ticker']== ticker]
+        trades.index = pd.to_datetime(trades.index)
         df = trades.resample(bar_size).agg({'price': 'ohlc', 'qty': 'sum'})
         df.columns = df.columns.droplevel()
         df.rename(columns={'qty':'volume'},inplace=True)

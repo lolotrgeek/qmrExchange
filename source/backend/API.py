@@ -25,7 +25,7 @@ def API(requester):
             limit = 20
         if (ticker is None or ticker == ""):
             ticker = 'XYZ'
-        return requests.get_candles(ticker, interval, limit)
+        return requests.get_price_bars(ticker, interval, limit)
 
     @app.route('/api/v1/create_asset', methods=['POST'])
     def create_asset():
