@@ -119,7 +119,6 @@ def run_exchange(time_channel, exchange_channel):
         while True:
             get_time()
             msg = responder.respond(callback)
-            monitor()
             if(msg == None): 
                 break
             
@@ -254,7 +253,7 @@ def main():
                 print(f"closing agent {agent.name}")
                 agent.join()
                 agents.remove(agent) 
-            sleep(1)
+            sleep(.1)
 
         print("processes successfully closed")
 
