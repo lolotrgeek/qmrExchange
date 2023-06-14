@@ -30,7 +30,6 @@ class Requests():
                 error[topic] = f"[Request Error] {e}"
                 if e != None or e != "None": 
                     print(traceback.format_exc())
-                self.requester.close()
                 return error
             sleep(0.1)
             return self.make_request(topic, message, factory, tries)
