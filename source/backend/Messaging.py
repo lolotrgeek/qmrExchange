@@ -12,8 +12,7 @@ class Requester():
     def request(self, msg):
         try:
             self.socket.send_json(msg)
-            return self.socket.recv_json()
-            evts = dict(self.poller.poll(1))
+            evts = dict(self.poller.poll(1000))
             if self.socket in evts:
                 return self.socket.recv_json(zmq.DONTWAIT)
             else:
@@ -27,7 +26,7 @@ class Requester():
             return None
 
     def close(self):
-        self.socket.close()
+        self.socket.close(0)
         self.context.term()
 
 class Responder():
@@ -43,7 +42,7 @@ class Responder():
             self.socket.send_json(response)
             return response
         except zmq.ZMQError as e:
-            self.socket.close()
+            self.socket.close(0)
             self.context.term()
             return None
         except Exception as e:

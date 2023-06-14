@@ -16,7 +16,7 @@ import traceback
 
 tickers = ['XYZ']
 agents = []
-num_agents = 1
+num_agents = 5
 start_time = datetime(1700,1,1)
 
 def run_clock():
@@ -28,6 +28,7 @@ def run_clock():
             msg = p.push({"time": str(clock.dt)})
     
     except KeyboardInterrupt:
+        print("attempting to close clock..." )
         return
 
 def get_clock(time_channel):
@@ -47,6 +48,9 @@ def route_clock(time_channel):
         r.route()
     except Exception as e:
         print(e)
+        return None
+    except KeyboardInterrupt:
+        print("attempting to close clock router..." )
         return None  
 
 def run_broker(agent_channel, exchange_channel):
@@ -57,6 +61,9 @@ def run_broker(agent_channel, exchange_channel):
     except Exception as e:
         print("[Broker Error] ", e)
         return None
+    except KeyboardInterrupt:
+        print("attempting to close broker..." )
+        return None
 
 def run_exchange(time_channel, exchange_channel):
     try: 
@@ -64,6 +71,16 @@ def run_exchange(time_channel, exchange_channel):
         time_puller = Puller(time_channel)
         exchange.create_asset(tickers[0]) 
         responder = Responder(exchange_channel)
+
+        def monitor():
+            exchange_data = {
+                "time": exchange.datetime,
+                "agents": exchange.agents,
+                "books": exchange.books,
+                "trades": exchange.trades,
+            }
+            print(exchange_data, end='\r')
+            
 
         def get_time():
             get_time = time_puller.pull()
@@ -77,7 +94,6 @@ def run_exchange(time_channel, exchange_channel):
                 exchange.datetime = get_time['time']            
 
         def callback(msg):
-            print('reveived message', msg)
             if msg['topic'] == 'create_asset': return dumps(exchange.create_asset(msg['ticker'], msg['seed_price'], msg['seed_bid'], msg['seed_ask']))
             elif msg['topic'] == 'limit_buy': return dumps(exchange.limit_buy(msg['ticker'], msg['price'], msg['qty'], msg['creator'], msg['fee']).to_dict())
             elif msg['topic'] == 'limit_sell': return dumps(exchange.limit_sell(msg['ticker'], msg['price'], msg['qty'], msg['creator'], msg['fee']).to_dict())
@@ -103,6 +119,7 @@ def run_exchange(time_channel, exchange_channel):
         while True:
             get_time()
             msg = responder.respond(callback)
+            monitor()
             if(msg == None): 
                 break
             
@@ -112,20 +129,29 @@ def run_exchange(time_channel, exchange_channel):
         print(traceback.print_exc())
         return None  
     except KeyboardInterrupt:
+        print("attempting to close exchange..." )
         return None
 
-def run_agent(time_channel, exchange_channel):
+def run_agent(time_channel, agent_channel):
     try:
         agent = None
         if randint(0,1) == 0:
-            agent =  NaiveMarketMaker(name='market_maker', tickers=tickers, aum=1_000, spread_pct=0.005, qty_per_order=4, requester=Requests(exchange_channel))
+            agent =  NaiveMarketMaker(name='market_maker', tickers=tickers, aum=1_000, spread_pct=0.005, qty_per_order=4, requester=Requests(Requester(channel=agent_channel)))
         else:
-            agent = RandomMarketTaker(name='market_taker', tickers=tickers, aum=1_000, prob_buy=.2, prob_sell=.2, qty_per_order=1, requester=Requests(exchange_channel) )
-
+            agent = RandomMarketTaker(name='market_taker', tickers=tickers, aum=1_000, prob_buy=.2, prob_sell=.2, qty_per_order=1, requester=Requests(Requester(channel=agent_channel)))
+        registered = agent.register()
+        if registered is None:
+            raise Exception("Agent not registered")
         while True:
-            agent.next()
+            next = agent.next()
+            if next is None:
+                break
     except Exception as e:
         print("[Agent Error] ", e)
+        return None
+    except KeyboardInterrupt:
+        print("attempting to close agent..." )
+        agent.requests.requester.close()
         return None
 
 def agent_episodes(time_channel, agent_channel):
@@ -177,6 +203,10 @@ def run_api(agent_channel):
     except Exception as e:
         print("[API Error] ", e)
         return None
+    except  KeyboardInterrupt:
+        print("attempting to close api..." )
+        return None
+
 
 def main():
     try:
@@ -186,20 +216,19 @@ def main():
 
         clock_process = Process(target=run_clock)
         clock_router = Process(target=route_clock, args=(time_channel, ))
-        clock_getter = Process(target=get_clock, args=(time_channel, ))
         broker_process = Process(target=run_broker, args=(agent_channel, exchange_channel ))
         exchange_process = Process(target=run_exchange, args=(time_channel, exchange_channel ))
         api_process = Process(target=run_api, args=(agent_channel,))
 
         clock_router.start()
         clock_process.start()
-        clock_getter.start()
         broker_process.start()
         exchange_process.start()
-        # api_process.start()
+        api_process.start()
         
         for i in range(0,num_agents):
-            agent_process = Process(target=agent_test, args=(time_channel, agent_channel ))
+            agent_process = Process(target=run_agent, args=(time_channel, agent_channel ))
+            agents.append(agent_process)
             agent_process.start()
 
         while True:
@@ -207,21 +236,26 @@ def main():
 
     except KeyboardInterrupt:
         print("attempting to close processes..." )
-        for agent in agents:
-            agent.terminate()
-            agent.join()
         clock_process.terminate()
         clock_router.terminate()
-        clock_getter.terminate()
         exchange_process.terminate()
-        broker_process.terminate()
         api_process.terminate()
+        broker_process.terminate()
         clock_process.join()
         clock_router.join()
-        clock_getter.join()
         exchange_process.join()
-        broker_process.join()
         api_process.join()
+        broker_process.join()
+
+        while True:
+            if(len(agents) == 0): break
+            for agent in agents:
+                print(f"waiting for {len(agents)} agents to close...")
+                print(f"closing agent {agent.name}")
+                agent.join()
+                agents.remove(agent) 
+            sleep(1)
+
         print("processes successfully closed")
 
     finally:

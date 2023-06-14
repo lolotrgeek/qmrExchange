@@ -26,6 +26,7 @@ class RandomMarketTaker(Agent):
                 self.market_buy(ticker,self.qty_per_order)
             elif action == 'close':
                 self.market_sell(ticker,self.get_position(ticker))
+        return True
 
 class NaiveMarketMaker(Agent):
     def __init__(self, name, tickers, aum, spread_pct=.005, qty_per_order=1, requester=None):
@@ -44,6 +45,8 @@ class NaiveMarketMaker(Agent):
             self.cancel_all_orders(ticker)
             self.limit_buy(ticker, price * (1-self.spread_pct/2), qty=self.qty_per_order)
             self.limit_sell(ticker, price * (1+self.spread_pct/2), qty=self.qty_per_order)
+        return True
+            
 
 class CryptoMarketMaker(Agent):
     def __init__(self, name, tickers, aum, spread_pct=.005, qty_per_order=1):
@@ -165,11 +168,7 @@ class TestAgent(Agent):
             if get_quotes is None:
                 raise Exception("Get quotes failed")
             get_best_bid = self.get_best_bid('TEST')
-            if get_best_bid is not None:
-                print(get_best_bid)
             get_best_ask = self.get_best_ask('TEST')
-            if get_best_ask is not None:
-                print(get_best_ask)
             mid_price = self.get_midprice('TEST')
             if mid_price is None:
                 raise Exception("Get mid price failed")

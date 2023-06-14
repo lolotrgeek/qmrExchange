@@ -270,7 +270,6 @@ class Exchange():
     def register_agent(self, name, initial_cash):
         #TODO: use an agent class???
         self.agents.append({'name':name,'cash':initial_cash,'_transactions':[]})
-        print(self.agents)
         return {'registered_agent':name}
 
     def get_cash(self, agent_name):
