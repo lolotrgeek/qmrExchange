@@ -18,6 +18,7 @@ class Requester():
             else:
                 return None
         except zmq.ZMQError as e:
+            print("[Requester Error]", e, "Request:", msg)
             return None            
         except Exception as e:
             print("[Requester Error]", e, "Request:", msg)
@@ -42,8 +43,7 @@ class Responder():
             self.socket.send_json(response)
             return response
         except zmq.ZMQError as e:
-            self.socket.close(0)
-            self.context.term()
+            print("[Response Error]", e, "Request:", msg)
             return None
         except Exception as e:
             print("[Response Error]", e, "Request:", msg)
