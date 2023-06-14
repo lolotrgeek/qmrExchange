@@ -47,7 +47,6 @@ class NaiveMarketMaker(Agent):
             self.limit_sell(ticker, price * (1+self.spread_pct/2), qty=self.qty_per_order)
         return True
             
-
 class CryptoMarketMaker(Agent):
     def __init__(self, name, tickers, aum, spread_pct=.005, qty_per_order=1):
         Agent.__init__(self, name, tickers, aum)

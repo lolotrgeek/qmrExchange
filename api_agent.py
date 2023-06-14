@@ -18,15 +18,6 @@ async def main():
     # limit_sell = remote_agent.limit_sell('XYZ', 1, 1)
 
     # get_price_bars = remote_agent.get_price_bars('XYZ', '1D', 20)
-
-
-    #TODO: need to save order_ids in remtoe_agent
-    # cancel_order = remote_agent.cancel_order()
-
-    #TODO: register remote agent with the exchange
-    # cancel_all_orders = remote_agent.cancel_all_orders('XYZ')
-
-
     print("last_trade", last_trade)
     print("best_bid", best_bid)
     print("best_ask", best_ask)

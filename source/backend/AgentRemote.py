@@ -7,8 +7,6 @@ from .OrderBook import OrderBook
 from uuid import uuid4 as UUID
 from requests import get, post
 import aiohttp
-import asyncio
-import json
 
 class AgentRemote():
     """The Agent class is the base class for developing different traders that participate remotely in the simulated exchange.
