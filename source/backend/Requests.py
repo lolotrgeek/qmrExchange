@@ -16,6 +16,8 @@ class Requests():
                 raise Exception(f'{topic} is None, {msg}')
             elif type(msg) is str:
                 return json.loads(msg)
+            elif type(msg) is list:
+                return msg
             elif type(msg) is not dict:
                 raise Exception(f'{topic} got type {type(msg)} expected dict. Message{msg}')
             elif 'error' in msg:

@@ -7,6 +7,7 @@ from .OrderSide import OrderSide
 from .Blockchain import Blockchain
 from .Fees import Fees
 from datetime import datetime
+from ._utils import format_dataframe_rows_to_dict
 # Creates an Orderbook and Assets
 class Exchange():
     def __init__(self, datetime= None):
@@ -101,7 +102,7 @@ class Exchange():
             pd.DataFrame: a dataframe containing all trades
         """
         trades = pd.DataFrame.from_records([t.to_dict() for t in self.trade_log if t.ticker == ticker]).head(limit)
-        return trades
+        return format_dataframe_rows_to_dict(trades)
     
     def get_price_bars(self, ticker, limit=20, bar_size='1D'):
         #TODO: not resampling correctly
@@ -111,7 +112,7 @@ class Exchange():
         df = trades.resample(bar_size).agg({'price': 'ohlc', 'qty': 'sum'})
         df.columns = df.columns.droplevel()
         df.rename(columns={'qty':'volume'},inplace=True)
-        return df.head(limit).to_json()
+        return format_dataframe_rows_to_dict(df.head(limit))
     
     def _process_trade(self, ticker, qty, price, buyer, seller, fee=0.0):
         trade = Trade(ticker, qty, price, buyer, seller, self.datetime, fee=fee)

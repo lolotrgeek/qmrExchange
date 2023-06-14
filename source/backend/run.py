@@ -105,7 +105,7 @@ def run_exchange(time_channel, exchange_channel):
             # elif msg['topic'] == 'mempool': return exchange.mempool(msg['limit'])
             elif msg['topic'] == 'order_book': return dumps(exchange.get_order_book(msg['ticker']).to_dict())
             elif msg['topic'] == 'latest_trade': return dumps(exchange.get_latest_trade(msg['ticker']))
-            elif msg['topic'] == 'trades': return exchange.get_trades(msg['ticker']).to_json()
+            elif msg['topic'] == 'trades': return dumps(exchange.get_trades(msg['ticker']))
             elif msg['topic'] == 'quotes': return exchange.get_quotes(msg['ticker'])
             elif msg['topic'] == 'best_bid': return dumps(exchange.get_best_bid(msg['ticker']).to_dict())
             elif msg['topic'] == 'best_ask': return dumps(exchange.get_best_ask(msg['ticker']).to_dict())

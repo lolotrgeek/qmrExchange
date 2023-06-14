@@ -12,6 +12,7 @@ class Requester():
     def request(self, msg):
         try:
             self.socket.send_json(msg)
+            # return self.socket.recv_json()
             evts = dict(self.poller.poll(1000))
             if self.socket in evts:
                 return self.socket.recv_json(zmq.DONTWAIT)
@@ -22,8 +23,7 @@ class Requester():
             return None            
         except Exception as e:
             print("[Requester Error]", e, "Request:", msg)
-            if e != None or e != "None": 
-                print(traceback.format_exc())
+            print(traceback.format_exc())
             return None
 
     def close(self):
