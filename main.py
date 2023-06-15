@@ -1,9 +1,9 @@
-from source.backend.types.OrderSide import OrderSide
-from source.backend.types.LimitOrder import LimitOrder
-from source.backend.types.OrderBook import OrderBook
-from source.backend.Exchange import Exchange
-from source.backend.Agents import RandomMarketTaker, NaiveMarketMaker, CryptoMarketMaker, CryptoMarketTaker, RemoteTrader
-from source.backend.run import main
+from source.types.OrderSide import OrderSide
+from source.types.LimitOrder import LimitOrder
+from source.types.OrderBook import OrderBook
+from source.Exchange import Exchange
+from source.Agents import RandomMarketTaker, NaiveMarketMaker, CryptoMarketMaker, CryptoMarketTaker
+from source.run import main
 import sys
 import traceback
 
@@ -29,6 +29,4 @@ __all__ = [
     'NaiveMarketMaker',
     'CryptoMarketMaker',
     'CryptoMarketTaker',
-    'RemoteTrader',
-    'plot_bars',
 ]
