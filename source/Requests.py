@@ -44,7 +44,6 @@ class Requests():
         return self.make_request('create_asset', {'ticker': ticker, 'seed_price': seed_price, 'seed_bid': seed_bid, 'seed_ask': seed_ask}, self.requester)
 
     def get_mempool(self, limit):
-        #TODO: add mempool to market
         return self.make_request('mempool', {'limit': limit}, self.requester)
 
     def get_order_book(self, ticker):
