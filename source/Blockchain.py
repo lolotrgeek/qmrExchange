@@ -19,7 +19,7 @@ class Blockchain():
             'transactions': transactions, 
             'previous_hash': previous_hash or hash(self.chain[-1]),
         }
-        block.hash = lambda: hash((block['index'], block['timestamp'], block['transactions'], block['previous_hash']))
+        block['hash'] = lambda: hash((block['index'], block['timestamp'], block['transactions'], block['previous_hash']))
         self.chain.append(block)
         return block
     
