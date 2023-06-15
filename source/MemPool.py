@@ -1,4 +1,3 @@
-import random
 from datetime import datetime
 import pandas as pd
 
@@ -42,25 +41,4 @@ class MemPool:
             return pd.DataFrame()
         else:
             return pd.DataFrame.from_records([t.to_dict() for t in self.transactions]).set_index('dt')
-
-# Example usage
-# mempool = MemPool()
-
-# Randomly add transactions to the mempool in a while loop
-# while True:
-    # transaction = "Transaction " + str(mempool.total_transactions + 1)
-    # fee = random.uniform(0.01, 0.1)
-    # amount = random.randint(1, 100)
-    # mempool.add_transaction(transaction, fee, amount)
-    # print(f"Added transaction: {transaction}, Fee: {fee}, Amount: {amount}")
-    # time.sleep(random.uniform(0.5, 2.0))  # Random sleep interval between adding transactions
-
-    # # Process transactions
-    # mempool.process_transactions()
-
-    # # Retrieve pending transactions
-    # pending_transactions = mempool.get_pending_transactions()
-    # print("Pending transactions:")
-    # for mempool_transaction in pending_transactions:
-        # print(f"Transaction: {mempool_transaction.transaction}, Fee: {mempool_transaction.fee}, Amount: {mempool_transaction.amount}, Confirmed: {mempool_transaction.confirmed}, Timestamp: {mempool_transaction.timestamp}")
 
