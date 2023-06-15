@@ -3,13 +3,10 @@ import os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 from source.types.LimitOrder import LimitOrder
-
+from source.types.OrderSide import OrderSide
 import unittest
 from datetime import datetime
 from decimal import Decimal
-
-from .OrderSide import OrderSide
-from ..utils._utils import get_random_string
 
 class LimitOrderTests(unittest.TestCase):
 

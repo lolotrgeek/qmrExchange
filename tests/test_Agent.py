@@ -6,7 +6,7 @@ import sys
 import os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
-from source.Agent import Agent, Exchange, Trade, LimitOrder
+from source.AgentProcess import Agent, Exchange, Trade, LimitOrder
 
 class TestAgent(unittest.TestCase):
     def setUp(self):
