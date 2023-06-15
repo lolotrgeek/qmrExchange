@@ -1,8 +1,8 @@
 import pandas as pd
 from typing import List, Union
 from .Exchange import Exchange
-from .Trade import Trade
-from .LimitOrder import LimitOrder
+from .types.Trade import Trade
+from .types.LimitOrder import LimitOrder
 from uuid import uuid4 as UUID
 
 class Agent():

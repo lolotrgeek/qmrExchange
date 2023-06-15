@@ -1,10 +1,9 @@
-from source.backend.OrderSide import OrderSide
-from source.backend.LimitOrder import LimitOrder
-from source.backend.OrderBook import OrderBook
+from source.backend.types.OrderSide import OrderSide
+from source.backend.types.LimitOrder import LimitOrder
+from source.backend.types.OrderBook import OrderBook
 from source.backend.Exchange import Exchange
 from source.backend.AgentRemote import AgentRemote
 from source.backend.Agents import RandomMarketTaker, NaiveMarketMaker, CryptoMarketMaker, CryptoMarketTaker, RemoteTrader
-from source.backend.helpers import plot_bars
 from source.backend.run import main
 import sys
 import traceback

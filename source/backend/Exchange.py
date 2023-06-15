@@ -1,13 +1,13 @@
 import pandas as pd
 from typing import List
-from .OrderBook import OrderBook
-from .Trade import Trade
-from .LimitOrder import LimitOrder
-from .OrderSide import OrderSide
+from .types.OrderBook import OrderBook
+from .types.Trade import Trade
+from .types.LimitOrder import LimitOrder
+from .types.OrderSide import OrderSide
 from .Blockchain import Blockchain
-from .Fees import Fees
+from .types.Fees import Fees
 from datetime import datetime
-from ._utils import format_dataframe_rows_to_dict
+from .utils._utils import format_dataframe_rows_to_dict
 # Creates an Orderbook and Assets
 class Exchange():
     def __init__(self, datetime= None):

@@ -1,4 +1,4 @@
-from ._utils import get_datetime_range, get_timedelta
+from .utils._utils import get_datetime_range, get_timedelta
 from datetime import datetime, timedelta
 
 class Clock():

@@ -1,9 +1,8 @@
 import pandas as pd
 from typing import List, Union
-from .Exchange import Exchange
-from .Trade import Trade
-from .LimitOrder import LimitOrder
-from .OrderBook import OrderBook
+from .types.Trade import Trade
+from .types.LimitOrder import LimitOrder
+from .types.OrderBook import OrderBook
 from uuid import uuid4 as UUID
 from requests import get, post
 import aiohttp
@@ -15,7 +14,6 @@ class AgentRemote():
         self.name = name
         self.id = UUID()
         self.tickers = tickers
-        self.exchange:Exchange = None
         self.cash = aum
         self.initial_cash = aum
         self._transactions = []

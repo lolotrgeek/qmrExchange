@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 from .OrderSide import OrderSide
-from ._utils import get_random_string
+from ..utils._utils import get_random_string
 
 class LimitOrder():
 

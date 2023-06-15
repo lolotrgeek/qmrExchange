@@ -11,7 +11,7 @@ from .Requests import Requests
 from .Portfolio import Portfolio
 from datetime import datetime
 from random import randint
-from ._utils import dumps
+from .utils._utils import dumps
 import traceback
 
 tickers = ['XYZ']

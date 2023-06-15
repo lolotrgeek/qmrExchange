@@ -1,10 +1,10 @@
 import pandas as pd
 from typing import List
-from .OrderBook import OrderBook
-from .Trade import Trade
-from .LimitOrder import LimitOrder
-from .OrderSide import OrderSide
-from ._utils import format_dataframe_rows_to_dict, dumps
+from .types.OrderBook import OrderBook
+from .types.Trade import Trade
+from .types.LimitOrder import LimitOrder
+from .types.OrderSide import OrderSide
+from .utils._utils import format_dataframe_rows_to_dict, dumps
  
 class Market():
     def __init__(self, datetime= None):
