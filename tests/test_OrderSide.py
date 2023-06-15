@@ -1,9 +1,10 @@
 import unittest
-from enum import Enum
+import sys
+import os
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(parent_dir)
 
-class OrderSide(Enum):
-    BUY = 'buy'
-    SELL = 'sell'
+from source.types.OrderSide import OrderSide
 
 class OrderSideTests(unittest.TestCase):
 

@@ -2,7 +2,11 @@ import unittest
 from unittest.mock import MagicMock
 from datetime import datetime
 import pandas as pd
-from ..Agent import Agent, Exchange, Trade, LimitOrder
+import sys
+import os
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(parent_dir)
+from source.Agent import Agent, Exchange, Trade, LimitOrder
 
 class TestAgent(unittest.TestCase):
     def setUp(self):

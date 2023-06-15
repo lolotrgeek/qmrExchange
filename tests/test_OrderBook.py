@@ -1,8 +1,11 @@
 import unittest
 import pandas as pd
-
-from .LimitOrder import LimitOrder
-from ..utils._utils import format_dataframe_rows_to_dict
+import sys
+import os
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(parent_dir)
+from source.types.LimitOrder import LimitOrder
+from source.types.OrderBook import OrderBook
 
 class OrderBookTests(unittest.TestCase):
 

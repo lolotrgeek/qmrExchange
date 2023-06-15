@@ -1,5 +1,9 @@
 import unittest
 from datetime import datetime, timedelta
+import sys
+import os
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(parent_dir)
 from source.utils._utils import dumps, get_pandas_time, get_timedelta, get_datetime_range, get_random_string, format_dataframe_rows_to_dict
 
 class TestUtilsTest(unittest.TestCase):
