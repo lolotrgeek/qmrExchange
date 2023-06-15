@@ -1,6 +1,6 @@
 import unittest
 from datetime import datetime, timedelta
-from _utils import dumps, get_pandas_time, get_timedelta, get_datetime_range, get_random_string, format_dataframe_rows_to_dict
+from source.utils._utils import dumps, get_pandas_time, get_timedelta, get_datetime_range, get_random_string, format_dataframe_rows_to_dict
 
 class TestUtilsTest(unittest.TestCase):
     def test_dumps(self):

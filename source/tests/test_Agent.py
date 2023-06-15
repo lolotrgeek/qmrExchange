@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import MagicMock
 from datetime import datetime
 import pandas as pd
-from source.backend.Agent import Agent, Exchange, Trade, LimitOrder
+from ..Agent import Agent, Exchange, Trade, LimitOrder
 
 class TestAgent(unittest.TestCase):
     def setUp(self):

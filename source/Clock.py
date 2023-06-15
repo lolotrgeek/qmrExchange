@@ -10,4 +10,3 @@ class Clock():
     def tick(self):
         self.dt +=self.timeDelta
         return self.dt
-
