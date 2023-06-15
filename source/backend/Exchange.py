@@ -6,7 +6,6 @@ from .types.LimitOrder import LimitOrder
 from .types.OrderSide import OrderSide
 from .Blockchain import Blockchain
 from .types.Fees import Fees
-from datetime import datetime
 from .utils._utils import format_dataframe_rows_to_dict
 # Creates an Orderbook and Assets
 class Exchange():

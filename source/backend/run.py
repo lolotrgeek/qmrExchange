@@ -1,18 +1,15 @@
-
-from .Agents import NaiveMarketMaker, RandomMarketTaker, TestAgent
-from .Exchange import Exchange
 from time import sleep
+from datetime import datetime
+from random import randint
+import traceback
 from multiprocessing import Process
 from .Clock import Clock
 from .API import API
-from .Market import Market
 from .Messaging import Pusher, Puller, Requester, Responder, Router, Broker
 from .Requests import Requests
-from .Portfolio import Portfolio
-from datetime import datetime
-from random import randint
+from .Agents import NaiveMarketMaker, RandomMarketTaker, TestAgent
+from .Exchange import Exchange
 from .utils._utils import dumps
-import traceback
 
 tickers = ['XYZ']
 agents = []
@@ -205,7 +202,6 @@ def run_api(agent_channel):
     except  KeyboardInterrupt:
         print("attempting to close api..." )
         return None
-
 
 def main():
     try:

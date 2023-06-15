@@ -1,4 +1,4 @@
-from ._utils import format_dataframe_rows_to_dict, dumps
+from .utils._utils import format_dataframe_rows_to_dict, dumps
 from time import sleep
 import traceback
 from zmq import ZMQError

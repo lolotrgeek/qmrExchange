@@ -2,6 +2,7 @@ from flask import jsonify
 from flask_socketio import SocketIO, emit
 from time import sleep
 
+#TODO: for this to work we need to push data from the exchange and pull it to here then re-broadcast via websocket
 def WebSockets(app, sim):
     socketio = SocketIO(app, cors_allowed_origins="*")
 

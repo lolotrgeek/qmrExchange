@@ -53,4 +53,3 @@ class Blockchain():
     def transactions(self):
         return pd.DataFrame.from_records([t.to_dict() for t in self.chain]).set_index('dt')
     
-    
