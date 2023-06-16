@@ -31,6 +31,7 @@ class Exchange():
             seed_bid (float, optional): Limit price of an initial buy order, expressed as percentage of the seed_price. Defaults to .99.
             seed_ask (float, optional): Limit price of an initial sell order, expressed as percentage of the seed_price. Defaults to 1.01.
         """
+        #TODO: use init_qty to set the total asset in cirulation
         self.books[ticker] = OrderBook(ticker)
         self._process_trade(ticker, 1, seed_price, 'init_seed', 'init_seed',)
         self.limit_buy(ticker, seed_price * seed_bid, 1, 'init_seed')
@@ -287,7 +288,7 @@ class Exchange():
         return {'cash':self.get_agent(agent_name)['cash']}
     
     def get_assets(self, agent):
-        return {'assets' :self.get_agent(agent)['_transactions']}
+        return {'assets': self.get_agent(agent)['_transactions']}
     
     def __update_agents_cash(self, transaction):
         for side in transaction:
@@ -307,8 +308,8 @@ class Exchange():
             #TODO: have cash be an asset that is some currency
             buyer['cash'] -= transaction.amount + transaction.fee #NOTE: transaction.fee includes the exchange fee and the network fee
             seller['cash'] += transaction.amount
-            buyer['_transactions'].append({'dt':self.dt,'cash_flow':-(transaction.amount+transaction.fee),'ticker':transaction.ticker,'qty':transaction.amount})
-            seller['_transactions'].append({'dt':self.dt,'cash_flow':transaction.amount,'ticker':transaction.ticker,'qty':transaction.amount})
+            buyer['_transactions'].append({'dt':self.datetime,'cash_flow':-(transaction.amount+transaction.fee),'ticker':transaction.ticker,'qty':transaction.amount})
+            seller['_transactions'].append({'dt':self.datetime,'cash_flow':transaction.amount,'ticker':transaction.ticker,'qty':transaction.amount})
 
     def get_agent(self, agent_name):
         return next((d for (index, d) in enumerate(self.agents) if d['name'] == agent_name), None)
