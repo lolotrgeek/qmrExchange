@@ -33,6 +33,7 @@ class Exchange():
             seed_ask (float, optional): Limit price of an initial sell order, expressed as percentage of the seed_price. Defaults to 1.01.
         """
         self.books[ticker] = OrderBook(ticker)
+        self.register_agent('init_seed', market_qty * seed_price)
         self._process_trade(ticker, market_qty, seed_price, 'init_seed', 'init_seed',)
         self.limit_buy(ticker, seed_price * seed_bid, 1, 'init_seed')
         self.limit_sell(ticker, seed_price * seed_ask, market_qty-1, 'init_seed')
