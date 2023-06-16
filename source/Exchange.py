@@ -213,6 +213,16 @@ class Exchange():
         self.books[ticker].asks.insert(queue, new_order)
         return new_order
 
+    def get_order(self, id):
+        for book in self.books:
+            bid = next(([idx,o] for idx, o in enumerate(self.books[book].bids) if o.id == id),None)
+            if bid:
+                return bid
+            ask = next(([idx,o] for idx, o in enumerate(self.books[book].asks) if o.id == id),None)
+            if ask:
+                return ask
+        return None
+
     def cancel_order(self, id):
         for book in self.books:
             bid = next(([idx,o] for idx, o in enumerate(self.books[book].bids) if o.id == id),None)
