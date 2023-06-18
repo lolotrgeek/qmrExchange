@@ -33,10 +33,10 @@ class Exchange():
             seed_ask (float, optional): Limit price of an initial sell order, expressed as percentage of the seed_price. Defaults to 1.01.
         """
         self.books[ticker] = OrderBook(ticker)
-        self.register_agent('init_seed', market_qty * seed_price)
+        self.agents.append({'name':'init_seed','cash':market_qty * seed_price,'_transactions':[], 'assets': {ticker: market_qty}})
         self._process_trade(ticker, market_qty, seed_price, 'init_seed', 'init_seed',)
         self.limit_buy(ticker, seed_price * seed_bid, 1, 'init_seed')
-        self.limit_sell(ticker, seed_price * seed_ask, market_qty-1, 'init_seed')
+        self.limit_sell(ticker, seed_price * seed_ask, market_qty, 'init_seed')
         return self.books[ticker]
 
     def get_order_book(self, ticker: str) -> OrderBook:
@@ -65,7 +65,6 @@ class Exchange():
     def get_quotes(self, ticker):
         try:
             # TODO: if more than one order has the best price, add the quantities.
-            # TODO: check if corresponding quotes exist in order to avoid exceptions
             best_bid = self.books[ticker].bids[0]
             best_ask = self.books[ticker].asks[0]
         except IndexError :
@@ -125,8 +124,8 @@ class Exchange():
             self.__update_agents_currency(self.blockchain.mempool.transactions[-1])
         else:
             transaction = [
-                {'agent':buyer,'cash_flow':-qty*price,'ticker':ticker,'qty': qty},
-                {'agent':seller,'cash_flow':qty*price,'ticker':ticker,'qty': -qty}
+                {'agent':buyer,'cash_flow':-qty*price,'ticker':ticker,'qty': qty, 'fee':fee, 'type': 'buy'},
+                {'agent':seller,'cash_flow':qty*price,'ticker':ticker,'qty': -qty, 'fee':fee, 'type': 'sell'}
             ]
             # self.agents_cash_updates.extend(transaction)
             self.__update_agents_cash(transaction)
@@ -159,12 +158,14 @@ class Exchange():
         else:
             return LimitOrder(ticker, 0, 0, 'null_quote', OrderSide.BUY, self.datetime)
 
-    def limit_buy(self, ticker: str, price: float, qty: int, creator: str, fee=0):
+    def limit_buy(self, ticker: str, price: float, qty: int, creator: str, fee=0, tif='GTC'):
         if self.agent_has_cash(creator, price, qty):
             if not self.crypto:
                 price = round(price,2)
             # check if we can match trades before submitting the limit order
             while qty > 0:
+                if tif == 'TEST':
+                    break
                 best_ask = self.get_best_ask(ticker)
                 if best_ask.creator != 'null_quote' and price >= best_ask.price:
                     trade_qty = min(qty, best_ask.qty)
@@ -190,12 +191,14 @@ class Exchange():
         else:
             return {"limit_buy": "insufficient funds"}
 
-    def limit_sell(self, ticker: str, price: float, qty: int, creator: str, fee=0):
+    def limit_sell(self, ticker: str, price: float, qty: int, creator: str, fee=0, tif='GTC'):
         if self.agent_has_assets(creator, ticker, qty):
             if not self.crypto:
                 price = round(price,2)
             # check if we can match trades before submitting the limit order
             while qty > 0:
+                if tif == 'TEST':
+                    break
                 best_bid = self.get_best_bid(ticker)
                 if best_bid.creator != 'null_quote' and price <= best_bid.price:
                     trade_qty = min(qty, best_bid.qty)
@@ -278,8 +281,7 @@ class Exchange():
                 self._process_trade(ticker, trade_qty,bid.price, bid.creator, seller, fee=fee+taker_fee)
                 if qty == 0:
                     break
-            self.books[ticker].bids = [
-                bid for bid in self.books[ticker].bids if bid.qty > 0]
+            self.books[ticker].bids = [bid for bid in self.books[ticker].bids if bid.qty > 0]
             return {"market_sell": ticker}
         else:
             return {"market_sell": "insufficient assets"}
@@ -290,7 +292,10 @@ class Exchange():
     
     def agent_has_assets(self, agent, ticker, qty):
         agent_assets = self.get_assets(agent)['assets']
-        return agent_assets[ticker] >= qty
+        if ticker in agent_assets:
+            return agent_assets[ticker] >= qty
+        else: 
+            return False
 
     @property
     def trades(self):
@@ -316,10 +321,11 @@ class Exchange():
             if agent_idx is not None:
                 self.agents[agent_idx]['cash'] += side['cash_flow']
                 self.agents[agent_idx]['_transactions'].append({'dt':self.datetime,'cash_flow':side['cash_flow'],'ticker':side['ticker'],'qty':side['qty']})
-                if side['ticker'] in self.agents[agent_idx]['assets']: self.agents[agent_idx]['assets'][side['ticker']] += side['qty']
+                if side['ticker'] in self.agents[agent_idx]['assets']: 
+                    # print('updating... ',side['type'] , ' ', self.agents[agent_idx]['name'],' ',self.agents[agent_idx]['assets'][side['ticker']],'to',self.agents[agent_idx]['assets'][side['ticker']] + side['qty'])
+                    self.agents[agent_idx]['assets'][side['ticker']] += side['qty']
                 else: self.agents[agent_idx]['assets'][side['ticker']] = side['qty']
                  
-
     def __update_agents_currency(self, transaction):
         if transaction.confirmed:
             buyer_idx = self.__get_agent_index(transaction.recipient)
