@@ -267,7 +267,7 @@ class Exchange():
                 if qty == 0:
                     break
             self.books[ticker].asks = [ask for ask in self.books[ticker].asks if ask.qty > 0]
-            return {"market_buy": ticker, "qty": qty, "buyer": buyer, "fee": fee, "taker_fee": taker_fee, "fills": fills}
+            return {"market_buy": ticker, "buyer": buyer, "fills": fills}
         else:
             return {"market_buy": "insufficient funds"}
 
@@ -281,12 +281,12 @@ class Exchange():
                 taker_fee = self.fees.taker_fee(qty)
                 self.fees.total_fee_revenue += taker_fee
                 if(type(fee) is str): fee = float(fee)
-                fills.append({'qty': trade_qty, 'price': ask.price, 'fee': fee+taker_fee})
+                fills.append({'qty': trade_qty, 'price': bid.price, 'fee': fee+taker_fee})
                 self._process_trade(ticker, trade_qty,bid.price, bid.creator, seller, fee=fee+taker_fee)
                 if qty == 0:
                     break
             self.books[ticker].bids = [bid for bid in self.books[ticker].bids if bid.qty > 0]
-            return {"market_sell": ticker, "qty": qty, "seller": seller, "fee": fee, "taker_fee": taker_fee, "fills": fills }
+            return {"market_sell": ticker, "seller": seller, "fills": fills }
         else:
             return {"market_sell": "insufficient assets"}
 
