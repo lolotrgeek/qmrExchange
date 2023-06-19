@@ -6,7 +6,7 @@ import flask_monitoringdashboard as dashboard
 
 def API(requester):
     app = Flask(__name__)
-    dashboard.bind(app)
+    # dashboard.bind(app)
     requests = Requests(requester)
     @app.route('/')
     def index():
@@ -26,7 +26,7 @@ def API(requester):
         if (limit is None):
             limit = 20
         if (ticker is None or ticker == ""):
-            ticker = 'XYZ'
+            return jsonify({'message': 'Ticker not found.'}), 400
         return requests.get_price_bars(ticker, interval, limit)
 
     @app.route('/api/v1/create_asset', methods=['POST'])
@@ -34,9 +34,12 @@ def API(requester):
         data = request.get_json()
         ticker = data['ticker']
         seed_price = data.get('seed_price', 100)
+        seed_qty = data.get('seed_qty', 1000)
         seed_bid = data.get('seed_bid', 0.99)
         seed_ask = data.get('seed_ask', 1.01)
-        return requests.create_asset(ticker, seed_price, seed_bid, seed_ask)
+        if (ticker is None or ticker == ""):
+            return jsonify({'message': 'Ticker not found.'}), 400
+        return requests.create_asset(ticker, seed_price, seed_qty, seed_bid, seed_ask)
 
     @app.route('/api/v1/crypto/get_mempool', methods=['GET'])
     def get_mempool():
@@ -49,14 +52,14 @@ def API(requester):
     def get_order_book():
         ticker = request.args.get('ticker')
         if (ticker is None or ticker == ""):
-            return jsonify({'message': 'Ticker not found.'})
+            return jsonify({'message': 'Ticker not found.'}), 400
         return requests.get_order_book(ticker)
 
     @app.route('/api/v1/get_latest_trade', methods=['GET'])
     def get_latest_trade():
         ticker = request.args.get('ticker')
         if (ticker is None or ticker == ""):
-            return jsonify({'message': 'Ticker not found.'})
+            return jsonify({'message': 'Ticker not found.'}), 400
         return requests.get_latest_trade(ticker)
 
     @app.route('/api/v1/get_trades', methods=['GET'])
@@ -64,7 +67,7 @@ def API(requester):
         limit = request.args.get('limit', type=int)
         ticker = request.args.get('ticker')
         if (ticker is None or ticker == ""):
-            return jsonify({'message': 'Ticker not found.'})
+            return jsonify({'message': 'Ticker not found.'}), 400
         if (limit is None):
             limit = 20
         return requests.get_trades(ticker, limit)
@@ -73,28 +76,28 @@ def API(requester):
     def get_quotes():
         ticker = request.args.get('ticker')
         if (ticker is None or ticker == ""):
-            return jsonify({'message': 'Ticker not found.'})
+            return jsonify({'message': 'Ticker not found.'}), 400
         return requests.get_quotes(ticker)
         
     @app.route('/api/v1/get_best_bid', methods=['GET'])
     def get_best_bid():
         ticker = request.args.get('ticker')
         if (ticker is None or ticker == ""):
-            return jsonify({'message': 'Ticker not found.'})
+            return jsonify({'message': 'Ticker not found.'}), 400
         return requests.get_best_bid(ticker)
 
     @app.route('/api/v1/get_best_ask', methods=['GET'])
     def get_best_ask():
         ticker = request.args.get('ticker')
         if (ticker is None or ticker == ""):
-            return jsonify({'message': 'Ticker not found.'})
+            return jsonify({'message': 'Ticker not found.'}), 400
         return requests.get_best_ask(ticker)
 
     @app.route('/api/v1/get_midprice', methods=['GET'])
     def get_midprice():
         ticker = request.args.get('ticker')
         if (ticker is None or ticker == ""):
-            return jsonify({'message': 'Ticker not found.'})
+            return jsonify({'message': 'Ticker not found.'}), 400
         return jsonify({'midprice': requests.get_midprice(ticker)})
 
     @app.route('/api/v1/limit_buy', methods=['POST'])
@@ -104,7 +107,15 @@ def API(requester):
         price = data['price']
         qty = data['qty']
         creator = data['creator']
-        fee = data['fee']
+        fee = data['fee'], 0.0
+        if (ticker is None or ticker == ""):
+            return jsonify({'message': 'Ticker not found.'}), 400
+        if (price is None or price == ""):
+            return jsonify({'message': 'Price not found.'}), 400
+        if (qty is None or qty == ""):
+            return jsonify({'message': 'Quantity not found.'}), 400
+        if (creator is None or creator == ""):
+            return jsonify({'message': 'Creator not found.'}), 400  
         return requests.limit_buy(ticker, price, qty, creator, fee)
 
     @app.route('/api/v1/limit_sell', methods=['POST'])
@@ -114,13 +125,23 @@ def API(requester):
         price = data['price']
         qty = data['qty']
         creator = data['creator']
-        fee = data['fee']
+        fee = data['fee'], 0.0
+        if (ticker is None or ticker == ""):
+            return jsonify({'message': 'Ticker not found.'}), 400
+        if (price is None or price == ""):
+            return jsonify({'message': 'Price not found.'}), 400
+        if (qty is None or qty == ""):
+            return jsonify({'message': 'Quantity not found.'}), 400
+        if (creator is None or creator == ""):
+            return jsonify({'message': 'Creator not found.'}), 400        
         return requests.limit_sell(ticker, price, qty, creator, fee)
 
     @app.route('/api/v1/cancel_order', methods=['POST'])
     def cancel_order():
         data = request.get_json()
         order_id = data['id']
+        if (order_id is None or order_id == ""):
+            return jsonify({'message': 'Order ID not found.'}), 400
         return requests.cancel_order(order_id)
 
     @app.route('/api/v1/cancel_all_orders', methods=['POST'])
@@ -128,6 +149,8 @@ def API(requester):
         data = request.get_json()
         agent = data['agent']
         ticker = data['ticker']
+        if (ticker is None or ticker == "" or agent is None or agent == ""):
+            return jsonify({'message': 'Ticker not found.'}), 400
         return requests.cancel_all_orders(ticker, agent)
 
     @app.route('/api/v1/market_buy', methods=['POST'])
@@ -136,7 +159,13 @@ def API(requester):
         ticker = data['ticker']
         qty = data['qty']
         buyer = data['buyer']
-        fee = data['fee']
+        fee = data['fee'], 0.0
+        if (ticker is None or ticker == ""):
+            return jsonify({'message': 'Ticker not found.'}), 400
+        if (qty is None or qty == ""):
+            return jsonify({'message': 'Quantity not found.'}), 400
+        if (buyer is None or buyer == ""):
+            return jsonify({'message': 'Creator not found.'}), 400          
         return requests.market_buy(ticker, qty, buyer, fee)
 
     @app.route('/api/v1/market_sell', methods=['POST'])
@@ -145,7 +174,13 @@ def API(requester):
         ticker = data['ticker']
         qty = data['qty']
         seller = data['seller']
-        fee = data['fee']
+        fee = data['fee'], 0.0
+        if (ticker is None or ticker == ""):
+            return jsonify({'message': 'Ticker not found.'}), 400
+        if (qty is None or qty == ""):
+            return jsonify({'message': 'Quantity not found.'}), 400
+        if (seller is None or seller == ""):
+            return jsonify({'message': 'Creator not found.'}), 400                
         return requests.market_sell(ticker, qty, seller, fee)
 
     return app
