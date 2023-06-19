@@ -189,7 +189,7 @@ class Exchange():
             self.books[ticker].bids.insert(queue, new_order)
             return new_order
         else:
-            return {"limit_buy": "insufficient funds"}
+            return LimitOrder("error", 0, 0, 'null_quote', OrderSide.BUY, self.datetime)
 
     def limit_sell(self, ticker: str, price: float, qty: int, creator: str, fee=0, tif='GTC'):
         if self.agent_has_assets(creator, ticker, qty):
@@ -222,7 +222,7 @@ class Exchange():
             self.books[ticker].asks.insert(queue, new_order)
             return new_order
         else:
-            return {"limit_sell": "insufficient assets"}
+            return LimitOrder("error", 0, 0, 'null_quote', OrderSide.SELL, self.datetime)
 
     def get_order(self, id):
         for book in self.books:
