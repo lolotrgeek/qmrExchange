@@ -22,7 +22,8 @@ class LimitOrder():
             'price': self.price,
             'qty': self.qty,
             'creator': self.creator,
-            'dt': self.dt
+            'dt': self.dt,
+            'fee': self.fee,
         }
 
     def __repr__(self):
