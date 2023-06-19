@@ -4,12 +4,50 @@ parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 
 import unittest
-from unittest.mock import MagicMock
 from source.Requests import Requests
+from source.Exchange import Exchange
+from source.types.OrderBook import OrderBook
+from source.utils._utils import dumps
+from datetime import datetime
+import json
 
-class MockRequester:
-    def request(self, message):
-        return '{"key": "value"}'
+class MockRequester():
+    def __init__(self):
+        self.responder = MockResponder()
+    
+    def request(self, msg):
+        return self.responder.callback(msg)
+
+class MockResponder():
+    def __init__(self):
+        self.exchange = Exchange(datetime=datetime(2023, 1, 1))
+        self.exchange.create_asset("AAPL", seed_price=150, seed_bid=0.99, seed_ask=1.01)
+        self.exchange.register_agent("buyer1", 100000)
+        self.mock_order = self.exchange.limit_buy("AAPL", price=149, qty=1, creator="buyer1")
+
+
+    def callback(self, msg):
+        if msg['topic'] == 'create_asset': return dumps(self.exchange.create_asset(msg['ticker'], msg['qty'], msg['seed_price'], msg['seed_bid'], msg['seed_ask']).to_dict())
+        elif msg['topic'] == 'limit_buy': return dumps(self.exchange.limit_buy(msg['ticker'], msg['price'], msg['qty'], msg['creator'], msg['fee']).to_dict())
+        elif msg['topic'] == 'limit_sell': return dumps(self.exchange.limit_sell(msg['ticker'], msg['price'], msg['qty'], msg['creator'], msg['fee']).to_dict())
+        elif msg['topic'] == 'market_buy': return self.exchange.market_buy(msg['ticker'], msg['qty'], msg['buyer'], msg['fee'])
+        elif msg['topic'] == 'market_sell': return self.exchange.market_sell(msg['ticker'], msg['qty'], msg['seller'], msg['fee'])
+        elif msg['topic'] == 'cancel_order': return self.exchange.cancel_order(msg['order_id'])
+        elif msg['topic'] == 'cancel_all_orders': return self.exchange.cancel_all_orders(msg['agent'], msg['ticker'])
+        elif msg['topic'] == 'candles': return self.exchange.get_price_bars(ticker=msg['ticker'], bar_size=msg['interval'], limit=msg['limit'])
+        # elif msg['topic'] == 'mempool': return self.exchange.mempool(msg['limit'])
+        elif msg['topic'] == 'order_book': return dumps(self.exchange.get_order_book(msg['ticker']).to_dict())
+        elif msg['topic'] == 'latest_trade': return dumps(self.exchange.get_latest_trade(msg['ticker']))
+        elif msg['topic'] == 'trades': return dumps(self.exchange.get_trades(msg['ticker']))
+        elif msg['topic'] == 'quotes': return self.exchange.get_quotes(msg['ticker'])
+        elif msg['topic'] == 'best_bid': return dumps(self.exchange.get_best_bid(msg['ticker']).to_dict())
+        elif msg['topic'] == 'best_ask': return dumps(self.exchange.get_best_ask(msg['ticker']).to_dict())
+        elif msg['topic'] == 'midprice': return self.exchange.get_midprice(msg['ticker'])
+        elif msg['topic'] == 'cash': return self.exchange.get_cash(msg['agent'])
+        elif msg['topic'] == 'assets': return self.exchange.get_assets(msg['agent'])
+        elif msg['topic'] == 'register_agent': return self.exchange.register_agent(msg['name'], msg['initial_cash'])
+        #TODO: self.exchange topic to get general self.exchange data
+        else: return f'unknown topic {msg["topic"]}'
 
 class RequestsTests(unittest.TestCase):
 
@@ -17,189 +55,314 @@ class RequestsTests(unittest.TestCase):
         self.mock_requester = MockRequester()
         self.requests = Requests(self.mock_requester)
 
+    def tearDown(self) -> None:
+        self.mock_requester = None
+        self.requests = None
+
+    def test_make_request_success(self):
+        topic = "test_topic"
+        message = {"data": "test_data"}
+        response = {"result": "success"}
+        self.mock_requester.request = lambda msg : response
+
+        result = self.requests.make_request(topic, message, None)
+        self.assertEqual(result, response)
+
+    def test_make_request_string_response(self):
+        topic = "test_topic"
+        message = {"data": "test_data"}
+        response = '{"result": "success"}'
+        self.mock_requester.request = lambda msg : response
+
+        result = self.requests.make_request(topic, message, None)
+
+        self.assertEqual(result, {"result": "success"})
+
+    def test_make_request_list_response(self):
+        topic = "test_topic"
+        message = {"data": "test_data"}
+        response = ["result1", "result2"]
+        self.mock_requester.request = lambda msg : response
+
+        result = self.requests.make_request(topic, message, None)
+
+        self.assertEqual(result, response)
+
+    def test_make_request_error_response(self):
+        topic = "test_topic"
+        message = {"data": "test_data"}
+        response = {"error": "request failed"}
+        self.mock_requester.request = lambda msg : response
+
+        with self.assertRaises(Exception) as context:
+            result = self.requests.make_request(topic, message, None)
+            self.assertEqual(result, response)
+
+    def test_make_request_none_response(self):
+        topic = "test_topic"
+        message = {"data": "test_data"}
+        self.mock_requester.request = lambda msg : None
+
+        with self.assertRaises(Exception) as context:
+            result = self.requests.make_request(topic, message, None)
+            self.assertEqual(result, '[Request Error] test_topic is None, None')
+
+    def test_make_request_no_dict_response(self):
+        topic = "test_topic"
+        message = {"data": "test_data"}
+        self.mock_requester.request = lambda msg : float(1)
+
+        with self.assertRaises(Exception) as context:
+            result = self.requests.make_request(topic, message, None)
+            self.assertEqual(result, '[Request Error] test_topic got type float expected dict. 1')
+
     def test_make_request_returns_dict(self):
         topic = 'candles'
         message = {'ticker': 'BTC', 'interval': '1h', 'limit': 10}
-        factory = self.mock_requester
+        factory = self.mock_requester.request = lambda msg: {'open': 1, 'high': 2, 'low': 3, 'close': 4, 'volume': 5, 'timestamp': 6}
 
         result = self.requests.make_request(topic, message, factory)
 
         self.assertIsInstance(result, dict)
-        self.assertEqual(result, {'key': 'value'})
+        self.assertEqual(result, {'open': 1, 'high': 2, 'low': 3, 'close': 4, 'volume': 5, 'timestamp': 6})
 
-    def test_get_price_bars(self):
-        ticker = 'BTC'
-        interval = '1h'
-        limit = 10
-
-        result = self.requests.get_price_bars(ticker, interval, limit)
-
-        self.assertIsInstance(result, dict)
-        self.assertEqual(result, {'key': 'value'})
+class CreateAssetTest(unittest.TestCase):
+    def setUp(self):
+        self.mock_requester = MockRequester()
+        self.requests = Requests(self.mock_requester)
 
     def test_create_asset(self):
-        ticker = 'BTC'
-        seed_price = 10000
-        seed_bid = 9900
-        seed_ask = 10100
+        response = self.requests.make_request('create_asset', {'ticker': "AAPL", 'qty': 1000, 'seed_price': 50000, 'seed_bid': 0.99, 'seed_ask': 1.01}, self.mock_requester)
+        self.assertEqual(type(response), dict)
+        self.assertEqual(response['bids'][0]['creator'], 'init_seed')
+        self.assertEqual(response['bids'][0]['dt'], '2023-01-01 00:00:00')
+        self.assertEqual(type(response['bids'][0]['id']), str)
+        self.assertEqual(response['bids'][0]['price'], 49500)
+        self.assertEqual(response['bids'][0]['qty'], 1)
+        self.assertEqual(response['bids'][0]['ticker'], 'AAPL')
+        self.assertEqual(response['asks'][0]['creator'], 'init_seed')
+        self.assertEqual(response['asks'][0]['dt'], '2023-01-01 00:00:00')
+        self.assertEqual(type(response['asks'][0]['id']), str)
+        self.assertEqual(response['asks'][0]['price'], 50500)
+        self.assertEqual(response['asks'][0]['qty'], 1000)
+        self.assertEqual(response['asks'][0]['ticker'], 'AAPL')
 
-        result = self.requests.create_asset(ticker, seed_price, seed_bid, seed_ask)
 
-        self.assertIsInstance(result, dict)
-        self.assertEqual(result, {'key': 'value'})
-
-    def test_get_mempool(self):
-        limit = 100
-
-        result = self.requests.get_mempool(limit)
-
-        self.assertIsInstance(result, dict)
-        self.assertEqual(result, {'key': 'value'})
+class GetOrderBookTest(unittest.TestCase):
+    def setUp(self):
+        self.mock_requester = MockRequester()
+        self.requests = Requests(self.mock_requester)
 
     def test_get_order_book(self):
-        ticker = 'BTC'
+        response = self.requests.make_request('order_book', {'ticker': 'AAPL'}, self.mock_requester)
+        self.assertEqual(type(response), dict)
+        self.assertEqual(len(response['bids']), 2)
+        self.assertEqual(len(response['asks']), 1)
+        self.assertEqual(response['bids'][0]['creator'], 'buyer1')
+        self.assertEqual(response['bids'][0]['dt'], '2023-01-01 00:00:00')
+        self.assertEqual(type(response['bids'][0]['id']), str)
+        self.assertEqual(response['bids'][0]['price'], 149)
+        self.assertEqual(response['bids'][0]['qty'], 1)
+        self.assertEqual(response['bids'][0]['ticker'], 'AAPL')
+        self.assertEqual(response['bids'][1]['creator'], 'init_seed')
 
-        result = self.requests.get_order_book(ticker)
-
-        self.assertIsInstance(result, dict)
-        self.assertEqual(result, {'key': 'value'})
+class GetLatestTradeTest(unittest.TestCase):
+    def setUp(self):
+        self.mock_requester = MockRequester()
+        self.requests = Requests(self.mock_requester)
 
     def test_get_latest_trade(self):
-        ticker = 'BTC'
+        response = self.requests.make_request('latest_trade', {'ticker': 'AAPL'}, self.mock_requester)
+        self.assertEqual(type(response), dict)
+        self.assertEqual(response['ticker'], 'AAPL')
+        self.assertEqual(response['price'], 150)
+        self.assertEqual(response['buyer'], 'init_seed')
+        self.assertEqual(response['seller'], 'init_seed')
 
-        result = self.requests.get_latest_trade(ticker)
-
-        self.assertIsInstance(result, dict)
-        self.assertEqual(result, {'key': 'value'})
+class GetTradesTest(unittest.TestCase):
+    def setUp(self):
+        self.mock_requester = MockRequester()
+        self.requests = Requests(self.mock_requester)
 
     def test_get_trades(self):
-        ticker = 'BTC'
-        limit = 10
+        response = self.requests.make_request('trades', {'ticker': 'AAPL', 'limit': 10}, self.mock_requester)
+        trades = response
+        self.assertEqual(type(trades), list)
+        self.assertEqual(len(trades), 1)
+        self.assertEqual(trades[0]['ticker'], 'AAPL')
+        self.assertEqual(trades[0]['price'], 150)
+        self.assertEqual(trades[0]['buyer'], 'init_seed')
+        self.assertEqual(trades[0]['seller'], 'init_seed')
 
-        result = self.requests.get_trades(ticker, limit)
-
-        self.assertIsInstance(result, dict)
-        self.assertEqual(result, {'key': 'value'})
+class GetQuotesTest(unittest.TestCase):
+    def setUp(self):
+        self.mock_requester = MockRequester()
+        self.requests = Requests(self.mock_requester)
 
     def test_get_quotes(self):
-        ticker = 'BTC'
+        response = self.requests.make_request('quotes', {'ticker': "AAPL"}, self.mock_requester)
+        quotes = response
+        self.assertEqual(quotes["ticker"], "AAPL")
+        self.assertEqual(quotes["bid_qty"], 1)
+        self.assertEqual(quotes["bid_p"], 149)
+        self.assertEqual(quotes["ask_qty"], 1000)
+        self.assertEqual(quotes["ask_p"], 151.5)
 
-        result = self.requests.get_quotes(ticker)
-
-        self.assertIsInstance(result, dict)
-        self.assertEqual(result, {'key': 'value'})
+class GetBestBidTest(unittest.TestCase):
+    def setUp(self):
+        self.mock_requester = MockRequester()
+        self.requests = Requests(self.mock_requester)
 
     def test_get_best_bid(self):
-        ticker = 'BTC'
+        response = self.requests.make_request('best_bid', {'ticker': 'AAPL'}, self.mock_requester)
+        best_bid = response
+        self.assertEqual(best_bid['ticker'], 'AAPL')
+        self.assertEqual(best_bid['price'], 149)
+        self.assertEqual(best_bid['qty'], 1)
+        self.assertEqual(best_bid['creator'], 'buyer1')
 
-        result = self.requests.get_best_bid(ticker)
-
-        self.assertIsInstance(result, dict)
-        self.assertEqual(result, {'key': 'value'})
+class GetBestAskTest(unittest.TestCase):
+    def setUp(self):
+        self.mock_requester = MockRequester()
+        self.requests = Requests(self.mock_requester)
 
     def test_get_best_ask(self):
-        ticker = 'BTC'
+        response = self.requests.make_request('best_ask', {'ticker': 'AAPL'}, self.mock_requester)
+        best_ask = response
+        self.assertEqual(best_ask['ticker'], 'AAPL')
+        self.assertEqual(best_ask['price'], 151.5)
+        self.assertEqual(best_ask['qty'], 1000)
+        self.assertEqual(best_ask['creator'], 'init_seed')
 
-        result = self.requests.get_best_ask(ticker)
-
-        self.assertIsInstance(result, dict)
-        self.assertEqual(result, {'key': 'value'})
+class GetMidPriceTest(unittest.TestCase):
+    def setUp(self):
+        self.mock_requester = MockRequester()
+        self.requests = Requests(self.mock_requester)
 
     def test_get_midprice(self):
-        ticker = 'BTC'
+        response = self.requests.make_request('midprice', {'ticker': 'AAPL'}, self.mock_requester)
+        midprice = response
+        self.assertEqual(midprice["midprice"], 150.25)
 
-        result = self.requests.get_midprice(ticker)
-
-        self.assertIsInstance(result, dict)
-        self.assertEqual(result, {'key': 'value'})
+class LimitBuyTest(unittest.TestCase):
+    def setUp(self):
+        self.mock_requester = MockRequester()
+        self.requests = Requests(self.mock_requester)
 
     def test_limit_buy(self):
-        ticker = 'BTC'
-        price = 10000
-        quantity = 0.1
-        creator = 'user1'
-        fee = 0.001
+        response = self.requests.make_request('limit_buy', {'ticker': "AAPL", 'price': 149, 'qty': 2, 'creator': 'buyer1', 'fee': 0.0}, self.mock_requester)
+        order = response
+        self.assertEqual(order['ticker'], "AAPL")
+        self.assertEqual(order['price'], 149)
+        self.assertEqual(order['qty'], 2)
+        self.assertEqual(order['creator'], "buyer1")
+        self.assertEqual(order['fee'], 0.0)
 
-        result = self.requests.limit_buy(ticker, price, quantity, creator, fee)
-
-        self.assertIsInstance(result, dict)
-        self.assertEqual(result, {'key': 'value'})
+class LimitSellTest(unittest.TestCase):
+    def setUp(self):
+        self.mock_requester = MockRequester()
+        self.requests = Requests(self.mock_requester)
 
     def test_limit_sell(self):
-        ticker = 'BTC'
-        price = 10000
-        quantity = 0.1
-        creator = 'user1'
-        fee = 0.001
+        response = self.requests.make_request('limit_sell', {'ticker': "AAPL", 'price': 151.5, 'qty': 1000, 'creator': 'init_seed', 'fee': 0.0}, self.mock_requester)
+        order = response
+        self.assertEqual(order['ticker'], "AAPL")
+        self.assertEqual(order['price'], 151.5)
+        self.assertEqual(order['qty'], 1000)
+        self.assertEqual(order['creator'], "init_seed")
+        self.assertEqual(order['fee'], 0.0)
 
-        result = self.requests.limit_sell(ticker, price, quantity, creator, fee)
-
-        self.assertIsInstance(result, dict)
-        self.assertEqual(result, {'key': 'value'})
+class CancelOrderTest(unittest.TestCase):
+    def setUp(self):
+        self.mock_requester = MockRequester()
+        self.requests = Requests(self.mock_requester)
 
     def test_cancel_order(self):
-        order_id = '12345'
+        order = self.mock_requester.responder.mock_order
+        response = self.requests.make_request('cancel_order', {'order_id': order.id}, self.mock_requester)
+        self.assertEqual(response, {'cancelled_order': order.id})
 
-        result = self.requests.cancel_order(order_id)
-
-        self.assertIsInstance(result, dict)
-        self.assertEqual(result, {'key': 'value'})
+class CancelAllOrdersTest(unittest.TestCase):
+    def setUp(self):
+        self.mock_requester = MockRequester()
+        self.requests = Requests(self.mock_requester)
 
     def test_cancel_all_orders(self):
-        ticker = 'BTC'
-        agent = 'user1'
+        response = self.requests.make_request('cancel_all_orders', {'ticker': 'AAPL', 'agent': 'buyer1'}, self.mock_requester)
+        self.assertEqual(response, {'cancelled_all_orders': 'AAPL'})
 
-        result = self.requests.cancel_all_orders(ticker, agent)
+class GetPriceBarsTest(unittest.TestCase):
+    def setUp(self):
+        self.mock_requester = MockRequester()
+        self.requests = Requests(self.mock_requester)
 
-        self.assertIsInstance(result, dict)
-        self.assertEqual(result, {'key': 'value'})
+    def test_get_price_bars(self):
+        response = self.requests.make_request('candles', {'ticker': 'AAPL', 'interval': '1h', 'limit': 10}, self.mock_requester)
+        candles = response
+        self.assertEqual(type(candles), list)
+        self.assertEqual(len(candles), 1)
+        self.assertEqual(candles[0]['open'], 150)
+        self.assertEqual(candles[0]['high'], 150)
+        self.assertEqual(candles[0]['low'], 150)
+        self.assertEqual(candles[0]['close'], 150)
+        self.assertEqual(candles[0]['volume'], 1000)
+        self.assertEqual(candles[0]['dt'], '01/01/2023, 00:00:00')
 
-    def test_market_buy(self):
-        ticker = 'BTC'
-        quantity = 0.1
-        creator = 'user1'
-        fee = 0.001
-
-        result = self.requests.market_buy(ticker, quantity, creator, fee)
-
-        self.assertIsInstance(result, dict)
-        self.assertEqual(result, {'key': 'value'})
-
-    def test_market_sell(self):
-        ticker = 'BTC'
-        quantity = 0.1
-        creator = 'user1'
-        fee = 0.001
-
-        result = self.requests.market_sell(ticker, quantity, creator, fee)
-
-        self.assertIsInstance(result, dict)
-        self.assertEqual(result, {'key': 'value'})
+class GetCashTest(unittest.TestCase):
+    def setUp(self):
+        self.mock_requester = MockRequester()
+        self.requests = Requests(self.mock_requester)
 
     def test_get_cash(self):
-        agent = 'user1'
+        response = self.requests.make_request('cash', {'agent': 'buyer1'}, self.mock_requester)
+        self.assertEqual(response, {'cash': 100000})
 
-        result = self.requests.get_cash(agent)
-
-        self.assertIsInstance(result, dict)
-        self.assertEqual(result, {'key': 'value'})
+class GetAssetsTest(unittest.TestCase):
+    def setUp(self):
+        self.mock_requester = MockRequester()
+        self.requests = Requests(self.mock_requester)
 
     def test_get_assets(self):
-        agent = 'user1'
+        response = self.requests.make_request('assets', {'agent': 'init_seed'}, self.mock_requester)
+        self.assertEqual(response, {'assets': {'AAPL': 1000}})
 
-        result = self.requests.get_assets(agent)
-
-        self.assertIsInstance(result, dict)
-        self.assertEqual(result, {'key': 'value'})
+class RegisterAgentTest(unittest.TestCase):
+    def setUp(self):
+        self.mock_requester = MockRequester()
+        self.requests = Requests(self.mock_requester)
 
     def test_register_agent(self):
-        name = 'agent1'
-        initial_cash = 10000
+        response = self.requests.make_request('register_agent', {'name': 'buyer1', 'initial_cash': 100000}, self.mock_requester)
+        self.assertEqual(response, {'registered_agent': 'buyer1'})
 
-        result = self.requests.register_agent(name, initial_cash)
+class MarketBuyTest(unittest.TestCase):
+    def setUp(self):
+        self.mock_requester = MockRequester()
+        self.requests = Requests(self.mock_requester)
 
-        self.assertIsInstance(result, dict)
-        self.assertEqual(result, {'key': 'value'})
+    def test_market_buy(self):
+        response = self.requests.make_request('market_buy', {'ticker': 'AAPL', 'qty': 1, 'buyer': 'buyer1', 'fee': 0.0}, self.mock_requester)
+        self.assertEqual(response, {'market_buy': 'AAPL', 'buyer': 'buyer1', 'fills': [{'qty': 1, 'price': 151.5, 'fee': 0.0}]})
+
+class MarketSellTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.mock_requester = MockRequester()
+        self.requests = Requests(self.mock_requester)
+
+    def test_market_sell(self):
+        response = self.requests.make_request('market_sell', {'ticker': 'AAPL', 'qty': 1, 'seller': 'init_seed', 'fee': 0.0}, self.mock_requester)
+        self.assertEqual(response, {'market_sell': 'AAPL', 'seller': 'init_seed', 'fills': [{'qty': 1, 'price': 149, 'fee': 0.0}]})
+
+class GetMempoolTest(unittest.TestCase):
+    def setUp(self):
+        self.mock_requester = MockRequester()
+        self.requests = Requests(self.mock_requester)
+
+    def get_mempool(self, limit):
+        response = self.requests.make_request('mempool', {'limit': limit}, self.mock_requester)
+        #TODO: implement test
+        print(response)
+
 
 if __name__ == '__main__':
     unittest.main()
