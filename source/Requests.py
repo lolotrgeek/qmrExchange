@@ -8,7 +8,7 @@ class Requests():
         self.timeout = 5
         self.max_tries = 1
         
-    def make_request(self, topic:str, message:dict, factory, tries=0):
+    def make_request(self, topic:str, message:dict, factory, tries=0, debug=False):
         try:
             message['topic'] = topic
             msg = self.requester.request(message)
@@ -27,10 +27,10 @@ class Requests():
         except Exception as e:
             tries += 1
             if tries >= self.max_tries:
-                print("[Request Error] ", e)
                 error = {}
                 error[topic] = f"[Request Error] {e}"
-                if e != None or e != "None": 
+                if debug == True:
+                    print("[Request Error] ", e) 
                     print(traceback.format_exc())
                 return error
             sleep(0.1)
@@ -40,8 +40,8 @@ class Requests():
     def get_price_bars(self, ticker, interval, limit):
         return self.make_request('candles', {'ticker': ticker, 'interval': interval, 'limit': limit}, self.requester)
 
-    def create_asset(self, ticker, seed_price, seed_bid, seed_ask):
-        return self.make_request('create_asset', {'ticker': ticker, 'seed_price': seed_price, 'seed_bid': seed_bid, 'seed_ask': seed_ask}, self.requester)
+    def create_asset(self, ticker, qty, seed_price, seed_bid, seed_ask):
+        return self.make_request('create_asset', {'ticker': ticker, 'qty': qty,'seed_price': seed_price, 'seed_bid': seed_bid, 'seed_ask': seed_ask}, self.requester)
 
     def get_mempool(self, limit):
         return self.make_request('mempool', {'limit': limit}, self.requester)
