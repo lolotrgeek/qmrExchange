@@ -210,8 +210,7 @@ class MarketBuyTestCase(unittest.TestCase):
 
     def test_market_buy(self):
         result = self.exchange.market_buy("AAPL", qty=4, buyer="buyer1", fee=0.01)
-
-        self.assertEqual(result, {"market_buy": "AAPL"})
+        self.assertEqual(result, {'market_buy': 'AAPL', 'buyer': 'buyer1', 'fills': [{'qty': 4, 'price': 151.5, 'fee': 0.01}]})
         self.assertEqual(self.exchange.get_agent("buyer1")['assets'], {"AAPL": 4} )
         self.assertEqual(self.exchange.get_agent("buyer1")['cash'], 9394.0 )
         self.assertEqual(len(self.exchange.books["AAPL"].asks), 1)
@@ -243,8 +242,7 @@ class MarketSellTestCase(unittest.TestCase):
         result = self.exchange.market_sell("AAPL", qty=3, seller="seller1", fee=0.02)
 
         agent = self.exchange.get_agent("seller1")
-        print(agent)
-        self.assertEqual(result, {"market_sell": "AAPL"})
+        self.assertEqual(result, {'market_sell': 'AAPL', 'seller': 'seller1', 'fills': [{'qty': 3, 'price': 150, 'fee': 0.02}]})
         self.assertEqual(self.exchange.get_agent("seller1")['assets'], {"AAPL": 1})
         self.assertEqual(self.exchange.get_agent("seller1")['cash'], 9844.0)
         self.assertEqual(len(self.exchange.books["AAPL"].bids), 1)
