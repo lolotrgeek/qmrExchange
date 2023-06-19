@@ -78,7 +78,6 @@ def run_exchange(time_channel, exchange_channel):
             }
             print(exchange_data, end='\r')
             
-
         def get_time():
             get_time = time_puller.pull()
             if get_time == None: 
@@ -91,7 +90,7 @@ def run_exchange(time_channel, exchange_channel):
                 exchange.datetime = get_time['time']            
 
         def callback(msg):
-            if msg['topic'] == 'create_asset': return dumps(exchange.create_asset(msg['ticker'], msg['seed_price'], msg['seed_bid'], msg['seed_ask']))
+            if msg['topic'] == 'create_asset': return dumps(exchange.create_asset(msg['ticker'],msg['qty'], msg['seed_price'], msg['seed_bid'], msg['seed_ask']).to_dict())
             elif msg['topic'] == 'limit_buy': return dumps(exchange.limit_buy(msg['ticker'], msg['price'], msg['qty'], msg['creator'], msg['fee']).to_dict())
             elif msg['topic'] == 'limit_sell': return dumps(exchange.limit_sell(msg['ticker'], msg['price'], msg['qty'], msg['creator'], msg['fee']).to_dict())
             elif msg['topic'] == 'market_buy': return exchange.market_buy(msg['ticker'], msg['qty'], msg['buyer'], msg['fee'])
@@ -119,7 +118,6 @@ def run_exchange(time_channel, exchange_channel):
             if(msg == None): 
                 break
             
-
     except Exception as e:
         print("[Exchange Error] ", e)
         print(traceback.print_exc())
