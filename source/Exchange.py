@@ -22,7 +22,7 @@ class Exchange():
     def __str__(self):
         return ', '.join(ob for ob in self.books)
 
-    def create_asset(self, ticker: str, market_qty=1000, seed_price=100, seed_bid=.99, seed_ask=1.01):
+    def create_asset(self, ticker: str, market_qty=1000, seed_price=100, seed_bid=.99, seed_ask=1.01) -> OrderBook:
         """_summary_
 
         Args:
