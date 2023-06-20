@@ -318,6 +318,9 @@ class Exchange():
     def _set_datetime(self, dt):
         self.datetime = dt
 
+    def get_transactions(self, agent):
+        return {'transactions':self.get_agent(agent)['_transactions']}
+
     def register_agent(self, name, initial_cash):
         #TODO: use an agent class???
         self.agents.append({'name':name,'cash':initial_cash,'_transactions':[], 'assets': {}})

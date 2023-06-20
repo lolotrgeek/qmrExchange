@@ -17,15 +17,16 @@ class LimitOrder():
 
     def to_dict(self):
         if self.ticker == 'error' and self.type == OrderSide.BUY: 
-            return {'limit_buy': "insufficient funds"}
+            return {'limit_buy': "insufficient funds", 'id': self.id}
         elif self.ticker == 'error' and self.type == OrderSide.SELL:
-            return {'limit_sell': "insufficient assets"}
+            return {'limit_sell': "insufficient assets", 'id': self.id}
         return {
             'id': self.id,
             'ticker': self.ticker,
             'price': self.price,
             'qty': self.qty,
             'creator': self.creator,
+            'type': 'limit_buy' if self.type == OrderSide.BUY else 'limit_sell',
             'dt': self.dt,
             'fee': self.fee,
         }

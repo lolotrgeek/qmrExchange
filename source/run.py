@@ -109,6 +109,7 @@ def run_exchange(time_channel, exchange_channel):
             elif msg['topic'] == 'cash': return exchange.get_cash(msg['agent'])
             elif msg['topic'] == 'assets': return exchange.get_assets(msg['agent'])
             elif msg['topic'] == 'register_agent': return exchange.register_agent(msg['name'], msg['initial_cash'])
+            elif msg['topic'] == 'get_agent': return exchange.get_agent(msg['name'])
             #TODO: exchange topic to get general exchange data
             else: return f'unknown topic {msg["topic"]}'
 

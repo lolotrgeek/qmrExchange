@@ -15,7 +15,6 @@ class Agent():
         self.requests = requester
         self.cash = aum
         self.initial_cash = aum
-        self._transactions = []
 
     def __repr__(self):
         return f'<Agent: {self.name}>'
@@ -84,7 +83,8 @@ class Agent():
             qty (int): the quantity of the asset to be acquired (in units)
 
         """
-        return self.requests.market_buy(ticker, qty, self.name, fee)
+        order = self.requests.market_buy(ticker, qty, self.name, fee)
+        return order
 
     def market_sell(self, ticker:str, qty:int, fee=0.0):
         """Places a market sell order. The order executes automatically at the best buy price if bid quotes are available.
@@ -94,7 +94,8 @@ class Agent():
             qty (int): the quantity of the asset to be sold (in units)
 
         """
-        return self.requests.market_sell(ticker, qty, self.name, fee)
+        order = self.requests.market_sell(ticker, qty, self.name, fee)
+        return order
 
     def limit_buy(self, ticker:str, price:float, qty:int, fee=0.0) -> LimitOrder:
         """Creates a limit buy order for a given asset and quantity at a certain price.
@@ -107,7 +108,8 @@ class Agent():
         Returns:
             LimitOrder
         """
-        return self.requests.limit_buy(ticker,price,qty,self.name, fee)
+        order = self.requests.limit_buy(ticker,price,qty,self.name, fee)
+        return order
 
     def limit_sell(self, ticker:str, price:float, qty:int, fee=0.0) -> LimitOrder:
         """Creates a limit sell order for a given asset and quantity at a certain price.
@@ -120,19 +122,14 @@ class Agent():
         Returns:
             LimitOrder
         """
-        return self.requests.limit_sell(ticker,price,qty,self.name, fee)
+        order = self.requests.limit_sell(ticker,price,qty,self.name, fee)
+        return order
+
 
     def get_position(self,ticker):
-        return sum(t['qty'] for t in self._transactions if t['ticker'] == ticker)
-
-    def get_cash_history(self):
-        return pd.DataFrame(self.__cash_history).set_index('dt')
-
-    @property
-    def trades(self):
-        trades = self.requests.trades
-        trades = trades[trades[['buyer','seller']].isin([self.name]).any(axis=1)]
-        return trades
+        agent = self.requests.get_agent(self.name)
+        _transactions = agent['_transactions']
+        return sum(t['qty'] for t in _transactions if t['ticker'] == ticker)
 
     def cancel_order(self, id:str) -> Union[LimitOrder,None]:
         """Cancels the order with a given id (if it exists)
@@ -143,7 +140,7 @@ class Agent():
         Returns:
             Union[LimitOrder,None]: the cancelled order if it is still pending. None if it does not exists or has already been filled/cancelled
         """
-        self.requests.cancel_order(id=id)
+        return self.requests.cancel_order(id=id)
 
     def cancel_all_orders(self, ticker:str):
         """Cancels all remaining orders that the agent has on an asset.
@@ -151,7 +148,7 @@ class Agent():
         Args:
             ticker (str): the ticker of the asset.
         """
-        self.requests.cancel_all_orders(ticker, self.name)
+        return self.requests.cancel_all_orders(ticker, self.name)
 
     def get_price_bars(self,ticker, bar_size='1D', limit=20):
         return  self.requests.get_price_bars(ticker, bar_size, limit=limit)
@@ -163,6 +160,8 @@ class Agent():
         return self.requests.get_assets(self.name)
     
     def get_portfolio_history(self, agent):
+        #TODO: update for process
+        return None
         bar_size = get_pandas_time(self._time_unit)
         portfolio = pd.DataFrame(index=get_datetime_range(self._from_date, self.dt, self._time_unit))
         transactions = pd.DataFrame(agent._transactions).set_index('dt')
