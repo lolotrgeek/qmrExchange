@@ -55,21 +55,25 @@ class OrderBookTests(unittest.TestCase):
                 'id': ['id1', 'id2'],
                 'ticker': ['AAPL', 'AAPL'],
                 'price': [150.0, 140.0],
+                'fee' : [0, 0],
                 'qty': [100, 200],
                 'creator': ['Creator1', 'Creator2'],
                 'dt': ['dt1', 'dt2'],
+                'type': ['limit_buy', 'limit_buy']
             }),
             'asks': pd.DataFrame({
                 'id': ['id3', 'id4'],
                 'ticker': ['AAPL', 'AAPL'],
                 'price': [160.0, 170.0],
+                'fee' : [0, 0],
                 'qty': [50, 75],
                 'creator': ['Creator3', 'Creator4'],
                 'dt': ['dt3', 'dt4'],
+                'type': ['limit_sell', 'limit_sell']
             })
         }
-        self.assertEqual(self.order_book.df['bids'].to_dict(), expected_df['bids'].to_dict())
-        self.assertEqual(self.order_book.df['asks'].to_dict(), expected_df['asks'].to_dict())
+        self.assertDictEqual(self.order_book.df['bids'].to_dict(), expected_df['bids'].to_dict())
+        self.assertDictEqual(self.order_book.df['asks'].to_dict(), expected_df['asks'].to_dict())
 
     def test_order_book_to_dict(self):
         self.order_book.bids = [

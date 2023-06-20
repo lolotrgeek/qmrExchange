@@ -9,6 +9,7 @@ class FeesTests(unittest.TestCase):
 
     def setUp(self):
         self.fees = Fees()
+        self.fees.waive_fees = False
 
     def test_taker_fee(self):
         volume = 1000

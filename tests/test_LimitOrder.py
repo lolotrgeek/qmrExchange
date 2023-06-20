@@ -39,11 +39,13 @@ class LimitOrderTests(unittest.TestCase):
             'id': self.limit_order.id,
             'ticker': 'AAPL',
             'price': Decimal('150.0'),
+            'fee': 0,
             'qty': 100,
             'creator': 'Creator',
+            'type': 'limit_buy',
             'dt': self.limit_order.dt
         }
-        self.assertEqual(self.limit_order.to_dict(), expected_dict)
+        self.assertDictEqual(self.limit_order.to_dict(), expected_dict)
 
     def test_limit_order_repr(self):
         expected_repr = "<LimitOrder: AAPL 100@150.0>"

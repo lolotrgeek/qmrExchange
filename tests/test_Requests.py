@@ -5,7 +5,7 @@ sys.path.append(parent_dir)
 
 import unittest
 from source.Requests import Requests
-from MockRequester import MockRequester
+from .MockRequester import MockRequester
 
 class RequestsTests(unittest.TestCase):
 
