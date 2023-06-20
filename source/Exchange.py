@@ -168,9 +168,9 @@ class Exchange():
                 if tif == 'TEST':
                     break
                 best_ask = self.get_best_ask(ticker)
-                if best_ask.creator != 'insufficient_funds' and price >= best_ask.price:
+                if best_ask.creator != 'null_quote' and price >= best_ask.price:
                     trade_qty = min(unfilled_qty, best_ask.qty)
-                    taker_fee = self.fees.taker_fee(unfilled_qty)
+                    taker_fee = self.fees.taker_fee(trade_qty)
                     self.fees.total_fee_revenue += taker_fee
                     if(type(fee) is str): fee = float(fee)
                     self._process_trade(ticker, trade_qty, best_ask.price, creator, best_ask.creator, fee=fee+taker_fee)
@@ -190,7 +190,9 @@ class Exchange():
                 self.fees.total_fee_revenue += maker_fee
             new_order = LimitOrder(ticker, price, unfilled_qty, creator, OrderSide.BUY, self.datetime,fee=fee+maker_fee)
             self.books[ticker].bids.insert(queue, new_order)
-            return LimitOrder(ticker, price, qty, creator, OrderSide.BUY, self.datetime,fee=fee+maker_fee)
+            initial_order = new_order
+            initial_order.qty = qty
+            return initial_order
         else:
             return LimitOrder("error", 0, 0, 'insufficient_funds', OrderSide.BUY, self.datetime)
 
@@ -204,9 +206,9 @@ class Exchange():
                 if tif == 'TEST':
                     break
                 best_bid = self.get_best_bid(ticker)
-                if best_bid.creator != 'insufficient_assets' and price <= best_bid.price:
+                if best_bid.creator != 'null_quote' and price <= best_bid.price:
                     trade_qty = min(unfilled_qty, best_bid.qty)
-                    taker_fee = self.fees.taker_fee(unfilled_qty)
+                    taker_fee = self.fees.taker_fee(trade_qty)
                     self.fees.total_fee_revenue += taker_fee
                     if(type(fee) is str): fee = float(fee)
                     self._process_trade(ticker, trade_qty, best_bid.price, best_bid.creator, creator, fee=fee+taker_fee)
@@ -226,8 +228,9 @@ class Exchange():
                 self.fees.total_fee_revenue += maker_fee
             new_order = LimitOrder(ticker, price, unfilled_qty, creator, OrderSide.SELL, self.datetime, fee=fee+maker_fee)
             self.books[ticker].asks.insert(queue, new_order)
-            
-            return LimitOrder(ticker, price, qty, creator, OrderSide.SELL, self.datetime, fee=fee+maker_fee)
+            initial_order = new_order
+            initial_order.qty = qty
+            return initial_order
         else:
             return LimitOrder("error", 0, 0, 'insufficient_assets', OrderSide.SELL, self.datetime)
 
@@ -247,12 +250,12 @@ class Exchange():
             if bid:
                 self.books[book].bids[bid[0]]
                 self.books[book].bids.pop(bid[0])
-                # return bid
+                return {"cancelled_order": id}
             ask = next(([idx,o] for idx, o in enumerate(self.books[book].asks) if o.id == id),None)
             if ask:
                 self.books[book].asks.pop(ask[0])
-                # return ask
-        return {"cancelled_order": id}
+                return {"cancelled_order": id}
+        return {"cancelled_order": "order not found"}
 
     def cancel_all_orders(self, agent, ticker):
         self.books[ticker].bids = [b for b in self.books[ticker].bids if b.creator != agent]
