@@ -1,3 +1,4 @@
+#Version 0.01
 from source.types.OrderSide import OrderSide
 from source.types.LimitOrder import LimitOrder
 from source.types.OrderBook import OrderBook
