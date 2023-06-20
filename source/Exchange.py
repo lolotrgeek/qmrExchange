@@ -163,17 +163,18 @@ class Exchange():
             if not self.crypto:
                 price = round(price,2)
             # check if we can match trades before submitting the limit order
-            while qty > 0:
+            unfilled_qty = qty
+            while unfilled_qty > 0:
                 if tif == 'TEST':
                     break
                 best_ask = self.get_best_ask(ticker)
-                if best_ask.creator != 'null_quote' and price >= best_ask.price:
-                    trade_qty = min(qty, best_ask.qty)
-                    taker_fee = self.fees.taker_fee(qty)
+                if best_ask.creator != 'insufficient_funds' and price >= best_ask.price:
+                    trade_qty = min(unfilled_qty, best_ask.qty)
+                    taker_fee = self.fees.taker_fee(unfilled_qty)
                     self.fees.total_fee_revenue += taker_fee
                     if(type(fee) is str): fee = float(fee)
                     self._process_trade(ticker, trade_qty, best_ask.price, creator, best_ask.creator, fee=fee+taker_fee)
-                    qty -= trade_qty
+                    unfilled_qty -= trade_qty
                     self.books[ticker].asks[0].qty -= trade_qty
                     self.books[ticker].asks = [ask for ask in self.books[ticker].asks if ask.qty > 0]
                 else:
@@ -183,30 +184,33 @@ class Exchange():
                 if price > order.price:
                     queue = idx
                     break
-            maker_fee = self.fees.maker_fee(qty)
-            self.fees.total_fee_revenue += maker_fee
-            new_order = LimitOrder(ticker, price, qty, creator, OrderSide.BUY, self.datetime,fee=fee+maker_fee)
+            maker_fee = 0
+            if unfilled_qty > 0:
+                maker_fee = self.fees.maker_fee(unfilled_qty)
+                self.fees.total_fee_revenue += maker_fee
+            new_order = LimitOrder(ticker, price, unfilled_qty, creator, OrderSide.BUY, self.datetime,fee=fee+maker_fee)
             self.books[ticker].bids.insert(queue, new_order)
-            return new_order
+            return LimitOrder(ticker, price, qty, creator, OrderSide.BUY, self.datetime,fee=fee+maker_fee)
         else:
-            return LimitOrder("error", 0, 0, 'null_quote', OrderSide.BUY, self.datetime)
+            return LimitOrder("error", 0, 0, 'insufficient_funds', OrderSide.BUY, self.datetime)
 
     def limit_sell(self, ticker: str, price: float, qty: int, creator: str, fee=0, tif='GTC'):
         if self.agent_has_assets(creator, ticker, qty):
             if not self.crypto:
                 price = round(price,2)
             # check if we can match trades before submitting the limit order
-            while qty > 0:
+            unfilled_qty = qty
+            while unfilled_qty > 0:
                 if tif == 'TEST':
                     break
                 best_bid = self.get_best_bid(ticker)
-                if best_bid.creator != 'null_quote' and price <= best_bid.price:
-                    trade_qty = min(qty, best_bid.qty)
-                    taker_fee = self.fees.taker_fee(qty)
+                if best_bid.creator != 'insufficient_assets' and price <= best_bid.price:
+                    trade_qty = min(unfilled_qty, best_bid.qty)
+                    taker_fee = self.fees.taker_fee(unfilled_qty)
                     self.fees.total_fee_revenue += taker_fee
                     if(type(fee) is str): fee = float(fee)
                     self._process_trade(ticker, trade_qty, best_bid.price, best_bid.creator, creator, fee=fee+taker_fee)
-                    qty -= trade_qty
+                    unfilled_qty -= trade_qty
                     self.books[ticker].bids[0].qty -= trade_qty
                     self.books[ticker].bids = [bid for bid in self.books[ticker].bids if bid.qty > 0]
                 else:
@@ -216,13 +220,16 @@ class Exchange():
                 if price < order.price:
                     queue = idx
                     break
-            maker_fee = self.fees.maker_fee(qty)
-            self.fees.total_fee_revenue += maker_fee
-            new_order = LimitOrder(ticker, price, qty, creator, OrderSide.SELL, self.datetime, fee=fee+maker_fee)
+            maker_fee = 0
+            if unfilled_qty > 0:
+                maker_fee = self.fees.maker_fee(unfilled_qty)
+                self.fees.total_fee_revenue += maker_fee
+            new_order = LimitOrder(ticker, price, unfilled_qty, creator, OrderSide.SELL, self.datetime, fee=fee+maker_fee)
             self.books[ticker].asks.insert(queue, new_order)
-            return new_order
+            
+            return LimitOrder(ticker, price, qty, creator, OrderSide.SELL, self.datetime, fee=fee+maker_fee)
         else:
-            return LimitOrder("error", 0, 0, 'null_quote', OrderSide.SELL, self.datetime)
+            return LimitOrder("error", 0, 0, 'insufficient_assets', OrderSide.SELL, self.datetime)
 
     def get_order(self, id):
         for book in self.books:
