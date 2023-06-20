@@ -12,7 +12,7 @@ class Requester():
     def request(self, msg):
         try:
             self.socket.send_json(msg)
-            # return self.socket.recv_json()
+            return self.socket.recv_json()
             evts = dict(self.poller.poll(1000))
             if self.socket in evts:
                 return self.socket.recv_json(zmq.DONTWAIT)
