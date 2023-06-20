@@ -42,5 +42,7 @@ class MockResponder():
         elif msg['topic'] == 'cash': return self.exchange.get_cash(msg['agent'])
         elif msg['topic'] == 'assets': return self.exchange.get_assets(msg['agent'])
         elif msg['topic'] == 'register_agent': return self.exchange.register_agent(msg['name'], msg['initial_cash'])
+        elif msg['topic'] == 'get_agent': return self.exchange.get_agent(msg['name'])
+
         #TODO: self.exchange topic to get general self.exchange data
         else: return f'unknown topic {msg["topic"]}'

@@ -321,6 +321,15 @@ class GetMempoolTest(unittest.TestCase):
         #TODO: implement test
         print(response)
 
+class GetAgentTest(unittest.TestCase):
+    def setUp(self):
+        self.mock_requester = MockRequester()
+        self.requests = Requests(self.mock_requester)
+
+    def test_get_agent(self):
+        response = self.requests.make_request('get_agent', {'name': 'buyer1'}, self.mock_requester)
+        self.assertDictEqual(response, {'name': 'buyer1', 'cash': 100000,'_transactions': [], 'assets': {}})
+        
 
 if __name__ == '__main__':
     unittest.main()

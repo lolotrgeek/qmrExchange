@@ -7,8 +7,9 @@ class Requests():
         self.requester = requester
         self.timeout = 5
         self.max_tries = 1
+        self.debug = False
         
-    def make_request(self, topic:str, message:dict, factory, tries=0, debug=False):
+    def make_request(self, topic:str, message:dict, factory, tries=0):
         try:
             message['topic'] = topic
             msg = self.requester.request(message)
@@ -29,7 +30,7 @@ class Requests():
             if tries >= self.max_tries:
                 error = {}
                 error[topic] = f"[Request Error] {e}"
-                if debug == True:
+                if self.debug == True:
                     print("[Request Error] ", e) 
                     print(traceback.format_exc())
                 return error
@@ -93,3 +94,6 @@ class Requests():
     
     def register_agent(self, name, initial_cash):
         return self.make_request('register_agent', {'name': name, 'initial_cash': initial_cash}, self.requester)
+    
+    def get_agent(self, name):
+        return self.make_request('get_agent', {'name': name}, self.requester)
