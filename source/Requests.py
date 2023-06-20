@@ -7,7 +7,7 @@ class Requests():
         self.requester = requester
         self.timeout = 5
         self.max_tries = 1
-        self.debug = False
+        self.debug = True
         
     def make_request(self, topic:str, message:dict, factory, tries=0):
         try:

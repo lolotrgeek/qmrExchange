@@ -20,3 +20,7 @@ Add function to `Exchange` then update `Request` and `Agent` then add correspond
 
 To Test add the response from `run.py` into `MockRequester` and add tests for new feature to `test_Requests` , `test_Agent` , `test_Exchange`
 
+## Test
+```
+pytest
+```
