@@ -121,7 +121,8 @@ class CancelOrderTestCase(unittest.TestCase):
     def test_cancel_order(self):
         order = self.exchange.limit_buy("AAPL", price=149, qty=2, creator="buyer1")
         self.assertEqual(len(self.exchange.books["AAPL"].bids), 2)
-        self.exchange.cancel_order(order.id)
+        cancel = self.exchange.cancel_order(order.id)
+        self.assertEqual(cancel, {"cancelled_order": order.id})
         self.assertEqual(len(self.exchange.books["AAPL"].bids), 1)
         self.assertEqual(self.exchange.get_order(order.id), None)       
 
@@ -169,7 +170,7 @@ class LimitBuyTestCase(unittest.TestCase):
 
         result = self.exchange.limit_buy('AAPL', 220, 3, 'insufficient_buyer', fee=0)
 
-        self.assertEqual(result, {"limit_buy": "insufficient funds"})
+        self.assertEqual(result.creator, 'insufficient_funds')
         self.assertEqual(len(self.exchange.books['AAPL'].bids), 1)
 
 class LimitSellTestCase(unittest.TestCase):
@@ -198,7 +199,7 @@ class LimitSellTestCase(unittest.TestCase):
 
         result = self.exchange.limit_sell('AAPL', 180, 4, 'insufficient_seller', fee=0)
 
-        self.assertEqual(result, {"limit_sell": "insufficient assets"})
+        self.assertEqual(result.creator, "insufficient_assets")
         self.assertEqual(len(self.exchange.books['AAPL'].asks), 1)
 
 class MarketBuyTestCase(unittest.TestCase):
