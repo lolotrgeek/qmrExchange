@@ -37,7 +37,6 @@ class Requests():
             sleep(0.1)
             return self.make_request(topic, message, factory, tries)
 
-    
     def get_price_bars(self, ticker, interval, limit):
         return self.make_request('candles', {'ticker': ticker, 'interval': interval, 'limit': limit}, self.requester)
 
@@ -97,3 +96,6 @@ class Requests():
     
     def get_agent(self, name):
         return self.make_request('get_agent', {'name': name}, self.requester)
+    
+    def get_agents(self):
+        return self.make_request('get_agents', {}, self.requester)

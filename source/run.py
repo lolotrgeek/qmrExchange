@@ -10,6 +10,9 @@ from .Requests import Requests
 from .Agents import NaiveMarketMaker, RandomMarketTaker, TestAgent
 from .Exchange import Exchange
 from .utils._utils import dumps
+from rich import print, inspect
+from rich.live import Live
+from rich.table import Table
 
 tickers = ['XYZ']
 agents = []
@@ -68,15 +71,6 @@ def run_exchange(time_channel, exchange_channel):
         time_puller = Puller(time_channel)
         exchange.create_asset(tickers[0]) 
         responder = Responder(exchange_channel)
-
-        def monitor():
-            exchange_data = {
-                "time": exchange.datetime,
-                "agents": exchange.agents,
-                "books": exchange.books,
-                "trades": exchange.trades,
-            }
-            print(exchange_data, end='\r')
             
         def get_time():
             get_time = time_puller.pull()
@@ -110,15 +104,18 @@ def run_exchange(time_channel, exchange_channel):
             elif msg['topic'] == 'assets': return exchange.get_assets(msg['agent'])
             elif msg['topic'] == 'register_agent': return exchange.register_agent(msg['name'], msg['initial_cash'])
             elif msg['topic'] == 'get_agent': return dumps(exchange.get_agent(msg['name']))
+            elif msg['topic'] == 'get_agents': return dumps(exchange.get_agents())
             #TODO: exchange topic to get general exchange data
             else: return f'unknown topic {msg["topic"]}'
+
 
         while True:
             get_time()
             msg = responder.respond(callback)
+
             if(msg == None): 
                 break
-            
+        
     except Exception as e:
         print("[Exchange Error] ", e)
         print(traceback.print_exc())
@@ -130,7 +127,7 @@ def run_exchange(time_channel, exchange_channel):
 def run_agent(time_channel, agent_channel):
     try:
         agent = None
-        if randint(0,1) == 0:
+        if randint(0,2) == 0:
             agent =  NaiveMarketMaker(name='market_maker', tickers=tickers, aum=1_000, spread_pct=0.005, qty_per_order=4, requester=Requests(Requester(channel=agent_channel)))
         else:
             agent = RandomMarketTaker(name='market_taker', tickers=tickers, aum=1_000, prob_buy=.2, prob_sell=.2, qty_per_order=1, requester=Requests(Requester(channel=agent_channel)))

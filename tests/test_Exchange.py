@@ -10,7 +10,6 @@ from source.Exchange import Exchange
 from source.types.LimitOrder import LimitOrder
 from source.types.OrderSide import OrderSide
 
-
 class CreateAssetTestCase(unittest.TestCase):
     def setUp(self):
         self.exchange = Exchange(datetime=datetime(2023, 1, 1))
@@ -57,7 +56,6 @@ class GetQuotesTestCase(unittest.TestCase):
         self.assertEqual(quotes["ask_qty"], 1000)
         self.assertEqual(quotes["ask_p"], 151.5)
 
-
 class GetMidpriceTestCase(unittest.TestCase):
     def setUp(self) -> None:
         self.exchange = Exchange(datetime=datetime(2023, 1, 1))
@@ -67,17 +65,27 @@ class GetMidpriceTestCase(unittest.TestCase):
         midprice = self.exchange.get_midprice("AAPL")
         self.assertEqual(midprice["midprice"], 150)
 
-
 class GetTradesTestCase(unittest.TestCase):
     def setUp(self) -> None:
         self.exchange = Exchange(datetime=datetime(2023, 1, 1))
         self.exchange.create_asset("AAPL", seed_price=150, seed_bid=0.99, seed_ask=1.01)
+        self.exchange.register_agent("trader1", initial_cash=10000)
+        self.exchange.register_agent("trader2", initial_cash=10000)
+        self.exchange.limit_buy("AAPL", price=152, qty=2, creator="trader1", fee=0)
+        self.exchange.limit_sell("AAPL", price=152, qty=2, creator="trader1", fee=0) # this one is meant to be ignored
+        self.exchange.market_buy("AAPL", qty=2, buyer="trader2", fee=0)
 
     def test_get_trades(self):
         trades = self.exchange.get_trades("AAPL", limit=10)
-        self.assertEqual(len(trades), 1)
-        self.assertEqual(trades[0]["ticker"], "AAPL")
-
+        print(trades)
+        self.assertEqual(len(trades), 3)
+        for trade in trades:
+            self.assertEqual(trade["ticker"], "AAPL")
+            if trade['buyer'] == 'init_seed':
+                self.assertEqual(trade["price"], 150)
+            else:
+                self.assertNotEqual(trade["buyer"], trade["seller"])
+        
 class GetPriceBarsTestCase(unittest.TestCase):
     def setUp(self) -> None:
         self.exchange = Exchange(datetime=datetime(2023, 1, 1))
@@ -366,7 +374,15 @@ class UpdateAgentsCurrencyTestCase(unittest.TestCase):
         self.assertEqual(len(self.exchange.agents[0]['_transactions']), 1)
         self.assertEqual(len(self.exchange.agents[1]['_transactions']), 1)
 
+class GetAgentsTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.exchange = Exchange(datetime=datetime(2023, 1, 1))
+        self.exchange.register_agent("agent8", initial_cash=10000)
 
+    def test_get_agents(self):
+        result = self.exchange.get_agents()
+        print(result)
+        self.assertEqual(result, [{'name': 'agent8', 'cash': 10000, '_transactions': [], 'assets': {}}])
 
 if __name__ == '__main__':
     unittest.main()

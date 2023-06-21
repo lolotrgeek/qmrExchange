@@ -7,6 +7,7 @@ from .types.OrderSide import OrderSide
 from .Blockchain import Blockchain
 from .types.Fees import Fees
 from .utils._utils import format_dataframe_rows_to_dict
+
 # Creates an Orderbook and Assets
 class Exchange():
     def __init__(self, datetime= None):
@@ -34,7 +35,7 @@ class Exchange():
         """
         self.books[ticker] = OrderBook(ticker)
         self.agents.append({'name':'init_seed','cash':market_qty * seed_price,'_transactions':[], 'assets': {ticker: market_qty}})
-        self._process_trade(ticker, market_qty, seed_price, 'init_seed', 'init_seed',)
+        self._process_trade(ticker, market_qty, seed_price, 'init_seed', 'init_seed')
         self.limit_buy(ticker, seed_price * seed_bid, 1, 'init_seed')
         self.limit_sell(ticker, seed_price * seed_ask, market_qty, 'init_seed')
         return self.books[ticker]
@@ -101,7 +102,7 @@ class Exchange():
         Returns:
             pd.DataFrame: a dataframe containing all trades
         """
-        trades = pd.DataFrame.from_records([t.to_dict() for t in self.trade_log if t.ticker == ticker]).head(limit)
+        trades = pd.DataFrame.from_records([t.to_dict() for t in self.trade_log if t.ticker == ticker]).tail(limit)
         return format_dataframe_rows_to_dict(trades)
     
     def get_price_bars(self, ticker, limit=20, bar_size='1D'):
@@ -112,7 +113,7 @@ class Exchange():
         df = trades.resample(bar_size).agg({'price': 'ohlc', 'qty': 'sum'})
         df.columns = df.columns.droplevel()
         df.rename(columns={'qty':'volume'},inplace=True)
-        return format_dataframe_rows_to_dict(df.head(limit))
+        return format_dataframe_rows_to_dict(df.tail(limit))
     
     def _process_trade(self, ticker, qty, price, buyer, seller, fee=0.0):
         trade = Trade(ticker, qty, price, buyer, seller, self.datetime, fee=fee)
@@ -129,6 +130,7 @@ class Exchange():
             ]
             # self.agents_cash_updates.extend(transaction)
             self.__update_agents_cash(transaction)
+            # print('transaction: ',transaction)
 
     def get_best_ask(self, ticker:str) -> LimitOrder:
         """retrieves the current best ask in the orderbook of an asset
@@ -168,7 +170,7 @@ class Exchange():
                 if tif == 'TEST':
                     break
                 best_ask = self.get_best_ask(ticker)
-                if best_ask.creator != 'null_quote' and price >= best_ask.price:
+                if best_ask.creator != 'null_quote' and best_ask.creator != creator and price >= best_ask.price:
                     trade_qty = min(unfilled_qty, best_ask.qty)
                     taker_fee = self.fees.taker_fee(trade_qty)
                     self.fees.total_fee_revenue += taker_fee
@@ -206,7 +208,7 @@ class Exchange():
                 if tif == 'TEST':
                     break
                 best_bid = self.get_best_bid(ticker)
-                if best_bid.creator != 'null_quote' and price <= best_bid.price:
+                if best_bid.creator != 'null_quote' and best_bid.creator != creator and price <= best_bid.price:
                     trade_qty = min(unfilled_qty, best_bid.qty)
                     taker_fee = self.fees.taker_fee(trade_qty)
                     self.fees.total_fee_revenue += taker_fee
@@ -266,6 +268,8 @@ class Exchange():
         if self.agent_has_cash(buyer, self.get_best_ask(ticker).price, qty):
             fills = []
             for idx, ask in enumerate(self.books[ticker].asks):
+                if ask.creator == buyer:
+                    continue
                 trade_qty = min(ask.qty, qty)
                 self.books[ticker].asks[idx].qty -= trade_qty
                 qty -= trade_qty
@@ -285,6 +289,8 @@ class Exchange():
         if self.agent_has_assets(seller, ticker, qty):
             fills = []
             for idx, bid in enumerate(self.books[ticker].bids):
+                if bid.creator == seller:
+                    continue
                 trade_qty = min(bid.qty, qty)
                 self.books[ticker].bids[idx].qty -= trade_qty
                 qty -= trade_qty
@@ -362,3 +368,6 @@ class Exchange():
 
     def __get_agent_index(self,agent_name):
         return next((index for (index, d) in enumerate(self.agents) if d['name'] == agent_name), None)
+    
+    def get_agents(self):
+        return self.agents

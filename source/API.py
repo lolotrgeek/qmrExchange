@@ -3,9 +3,11 @@ from flask_socketio import SocketIO, emit
 from time import sleep
 from .Requests import Requests
 import flask_monitoringdashboard as dashboard
+import logging
 
 def API(requester):
     app = Flask(__name__)
+    logging.getLogger('werkzeug').disabled = True
     # dashboard.bind(app)
     requests = Requests(requester)
     @app.route('/')
@@ -15,6 +17,13 @@ def API(requester):
     @app.route('/api/v1/sim_time', methods=['GET'])
     def get_sim_time():
         return jsonify({'sim_time': "TODO: req from clock process"})
+    
+    @app.route('/api/v1/get_agents', methods=['GET'])
+    def get_agents():
+        agents = requests.get_agents()
+        if agents is None:
+            return jsonify({'message': 'Agents not found.'}), 400
+        return agents
 
     @app.route('/api/v1/candles', methods=['GET'])
     def candles():

@@ -202,7 +202,13 @@ def test_market_sell(client, ticker, qty, seller, fee):
     response = client.post('/api/v1/market_sell', json=data)
     assert response.status_code == 200
 
-
+# Test get_agents endpoint
+@pytest.mark.parametrize('expected_status_code', [
+    200
+])
+def test_get_agents(client, expected_status_code):
+    response = client.get('/api/v1/get_agents')
+    assert response.status_code == expected_status_code
 
 if __name__ == '__main__':
     pytest.main()

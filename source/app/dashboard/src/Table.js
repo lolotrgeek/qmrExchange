@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react'
 const base_url = 'http://127.0.0.1:5000'
 
 const TableComponent = ({ ticker }) => {
+    const [agents, setAgents] = useState([])
     const [candles, setCandles] = useState([])
     const [orderBook, setOrderBook] = useState({bids:[], asks:[]})
     const [trades, setTrades] = useState([])
@@ -13,10 +14,14 @@ const TableComponent = ({ ticker }) => {
 
     useEffect(() => {
         const fetchData = async () => {
-            const candleResponse = await fetch(`${base_url}/api/v1/candles?ticker=${ticker}`)
-            const candleData = await candleResponse.json()
-            console.log(candleData)
-            setCandles(candleData)
+            const agentsResponse = await fetch(`${base_url}/api/v1/get_agents`)
+            const agentsData = await agentsResponse.json()
+            setAgents(agentsData)
+
+            // const candleResponse = await fetch(`${base_url}/api/v1/candles?ticker=${ticker}`)
+            // const candleData = await candleResponse.json()
+            // console.log(candleData)
+            // setCandles(candleData)
 
             const orderBookResponse = await fetch(`${base_url}/api/v1/get_order_book?ticker=${ticker}`)
             const orderBookData = await orderBookResponse.json()
@@ -39,7 +44,7 @@ const TableComponent = ({ ticker }) => {
             setBestAsk(bestAskData)
 
             const midpriceResponse = await fetch(`${base_url}/api/v1/get_midprice?ticker=${ticker}`)
-            const midpriceData = await midpriceResponse.text()
+            const midpriceData = await midpriceResponse.json()
             setMidprice(midpriceData)
         }
         const interval = setInterval(fetchData, 1000)
@@ -55,6 +60,20 @@ const TableComponent = ({ ticker }) => {
             <table>
                 <thead>
                     <tr>
+                        <th>Agents</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {agents.map((agent, index) => (
+                        <tr key={index}>
+                            <td>{JSON.stringify(agent)}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>            
+            <table>
+                <thead>
+                    <tr>
                         <th>Candles</th>
                     </tr>
                 </thead>
@@ -66,11 +85,11 @@ const TableComponent = ({ ticker }) => {
                     ))}
                 </tbody>
             </table>
-
+                        <h2>Order Book</h2>
             <table>
                 <thead>
                     <tr>
-                        <th>Order Book</th>
+                        <th>Bids</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -83,6 +102,11 @@ const TableComponent = ({ ticker }) => {
             </table>
 
             <table>
+            <thead>
+                    <tr>
+                        <th>Asks</th>
+                    </tr>
+                </thead>
                 <tbody>
                     {orderBook.asks.map((entry, index) => (
                         <tr key={index}>
@@ -154,7 +178,7 @@ const TableComponent = ({ ticker }) => {
                 </thead>
                 <tbody>
                     <tr>
-                        <td>{midprice}</td>
+                        <td>{JSON.stringify(midprice)}</td>
                     </tr>
                 </tbody>
             </table>

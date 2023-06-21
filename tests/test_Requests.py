@@ -329,7 +329,16 @@ class GetAgentTest(unittest.TestCase):
     def test_get_agent(self):
         response = self.requests.make_request('get_agent', {'name': 'buyer1'}, self.mock_requester)
         self.assertDictEqual(response, {'name': 'buyer1', 'cash': 100000,'_transactions': [], 'assets': {}})
-        
+
+class GetAgentsTest(unittest.TestCase):
+    def setUp(self):
+        self.mock_requester = MockRequester()
+        self.requests = Requests(self.mock_requester)
+
+    def test_get_agents(self):
+        response = self.requests.make_request('get_agents', {}, self.mock_requester)
+        expected = [{'_transactions': [{'cash_flow': -150000, 'dt': '2023-01-01 00:00:00', 'qty': 1000, 'ticker': 'AAPL'}, {'cash_flow': 150000, 'dt': '2023-01-01 00:00:00', 'qty': -1000, 'ticker': 'AAPL'}], 'assets': {'AAPL': 1000}, 'cash': 150000, 'name': 'init_seed'}, {'_transactions': [], 'assets': {}, 'cash': 100000, 'name': 'buyer1'}]
+        self.assertEqual(response, expected)        
 
 if __name__ == '__main__':
     unittest.main()
