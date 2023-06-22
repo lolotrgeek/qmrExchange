@@ -77,7 +77,6 @@ class GetTradesTestCase(unittest.TestCase):
 
     def test_get_trades(self):
         trades = self.exchange.get_trades("AAPL", limit=10)
-        print(trades)
         self.assertEqual(len(trades), 3)
         for trade in trades:
             self.assertEqual(trade["ticker"], "AAPL")
@@ -387,3 +386,24 @@ class GetAgentsTest(unittest.TestCase):
 if __name__ == '__main__':
     unittest.main()
 
+class HasAssetTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.exchange = Exchange(datetime=datetime(2023, 1, 1))
+        self.exchange.create_asset("AAPL", seed_price=150, seed_bid=0.99, seed_ask=1.01)
+        self.exchange.register_agent("agent9", initial_cash=10000)
+
+    def test_has_asset(self):
+        self.exchange.market_buy("AAPL", qty=2, buyer="agent9")
+        result = self.exchange.agent_has_assets("agent9", "AAPL", 2)
+        self.assertEqual(result, True)
+
+class HasCashTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.exchange = Exchange(datetime=datetime(2023, 1, 1))
+        self.exchange.create_asset("AAPL", seed_price=150, seed_bid=0.99, seed_ask=1.01)
+        self.exchange.register_agent("agent10", initial_cash=10000)
+
+    def test_has_cash(self):
+        price = self.exchange.get_best_ask("AAPL").price
+        result = self.exchange.agent_has_cash("agent10", price, 10)
+        self.assertEqual(result, True)
