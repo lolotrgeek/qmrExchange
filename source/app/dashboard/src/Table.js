@@ -14,9 +14,9 @@ const TableComponent = ({ ticker }) => {
 
     useEffect(() => {
         const fetchData = async () => {
-            const agentsResponse = await fetch(`${base_url}/api/v1/get_agents`)
-            const agentsData = await agentsResponse.json()
-            setAgents(agentsData)
+            // const agentsResponse = await fetch(`${base_url}/api/v1/get_agents`)
+            // const agentsData = await agentsResponse.json()
+            // setAgents(agentsData)
 
             // const candleResponse = await fetch(`${base_url}/api/v1/candles?ticker=${ticker}`)
             // const candleData = await candleResponse.json()
@@ -56,22 +56,7 @@ const TableComponent = ({ ticker }) => {
 
     return (
         <div>
-            <h2>Data Table</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Agents</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {agents.map((agent, index) => (
-                        <tr key={index}>
-                            <td>{JSON.stringify(agent)}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>            
-            <table>
+            {/* <table>
                 <thead>
                     <tr>
                         <th>Candles</th>
@@ -84,7 +69,7 @@ const TableComponent = ({ ticker }) => {
                         </tr>
                     ))}
                 </tbody>
-            </table>
+            </table> */}
                         <h2>Order Book</h2>
             <table>
                 <thead>
