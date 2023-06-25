@@ -10,7 +10,7 @@ class Agent():
     """
     def __init__(self, name:str, tickers:List[str], aum:int=10_000, requester=None):
         self.id = UUID()
-        self.name = name + str(self.id)[0:8]
+        self.name = name 
         self.tickers = tickers
         self.requests = requester
         self.cash = aum
@@ -154,9 +154,14 @@ class Agent():
         return  self.requests.get_price_bars(ticker, bar_size, limit=limit)
     
     def get_cash(self):
+        """
+        Returns: {cash: float}
+        """
         return self.requests.get_cash(self.name)
     
     def get_assets(self):
+        """
+        Returns: {assets: {ticker, amount}}"""
         return self.requests.get_assets(self.name)
     
     def get_portfolio_history(self, agent):
@@ -179,7 +184,11 @@ class Agent():
         return portfolio  
     
     def register(self):
-        return self.requests.register_agent(self.name, self.initial_cash)
+        agent = self.requests.register_agent(self.name, self.initial_cash)
+        if 'registered_agent' in agent:
+            self.name = agent['registered_agent']
+        else:
+            return 'UnRegistered Agent'
 
     def next(self):  
         pass

@@ -7,7 +7,7 @@ from .Clock import Clock
 from .API import API
 from .Messaging import Pusher, Puller, Requester, Responder, Router, Broker
 from .Requests import Requests
-from .Agents import NaiveMarketMaker, RandomMarketTaker, TestAgent
+from .Agents import NaiveMarketMaker, RandomMarketTaker, TestAgent, LowBidder
 from .Exchange import Exchange
 from .utils._utils import dumps
 from rich import print, inspect
@@ -16,7 +16,7 @@ from rich.table import Table
 
 tickers = ['XYZ']
 agents = []
-num_agents = 5
+num_agents = 10
 start_time = datetime(1700,1,1)
 
 def run_clock():
@@ -105,15 +105,23 @@ def run_exchange(time_channel, exchange_channel):
             elif msg['topic'] == 'register_agent': return exchange.register_agent(msg['name'], msg['initial_cash'])
             elif msg['topic'] == 'get_agent': return dumps(exchange.get_agent(msg['name']))
             elif msg['topic'] == 'get_agents': return dumps(exchange.get_agents())
+            elif msg['topic'] == 'add_cash': return dumps(exchange.add_cash(msg['agent'], msg['amount']))
             #TODO: exchange topic to get general exchange data
             else: return f'unknown topic {msg["topic"]}'
 
-
+        last_latest_trade = None
         while True:
             get_time()
             msg = responder.respond(callback)
+            latest_trade =exchange.get_latest_trade('XYZ')
+            if(last_latest_trade != latest_trade):
+                last_latest_trade = latest_trade
+                # print(latest_trade)
 
-            if(msg == None): 
+                # print("UnBought Supply: ", exchange.get_assets('init_seed'), "Total Cash", exchange.agents_cash())
+                # print(exchange.get_order_book('XYZ').to_dict())
+            if(msg == None):
+                print("exchange closed") 
                 break
         
     except Exception as e:
@@ -127,19 +135,23 @@ def run_exchange(time_channel, exchange_channel):
 def run_agent(time_channel, agent_channel):
     try:
         agent = None
-        if randint(0,2) == 0:
+        picker = randint(0,3)
+        if picker == 0:
             agent =  NaiveMarketMaker(name='market_maker', tickers=tickers, aum=1_000, spread_pct=0.005, qty_per_order=4, requester=Requests(Requester(channel=agent_channel)))
-        else:
+        elif picker == 1:
             agent = RandomMarketTaker(name='market_taker', tickers=tickers, aum=1_000, prob_buy=.2, prob_sell=.2, qty_per_order=1, requester=Requests(Requester(channel=agent_channel)))
+        else:
+            agent = LowBidder(name='low_bidder', tickers=tickers, aum=1_000, requester=Requests(Requester(channel=agent_channel)))
         registered = agent.register()
         if registered is None:
             raise Exception("Agent not registered")
         while True:
             next = agent.next()
-            if next is None:
+            if not next:
                 break
     except Exception as e:
         print("[Agent Error] ", e)
+        traceback.print_exc()
         return None
     except KeyboardInterrupt:
         print("attempting to close agent..." )

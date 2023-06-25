@@ -7,6 +7,7 @@ from .types.OrderSide import OrderSide
 from .Blockchain import Blockchain
 from .types.Fees import Fees
 from .utils._utils import format_dataframe_rows_to_dict
+from uuid import uuid4 as UUID
 
 # Creates an Orderbook and Assets
 class Exchange():
@@ -39,6 +40,29 @@ class Exchange():
         self.limit_buy(ticker, seed_price * seed_bid, 1, 'init_seed')
         self.limit_sell(ticker, seed_price * seed_ask, market_qty, 'init_seed')
         return self.books[ticker]
+   
+    def _process_trade(self, ticker, qty, price, buyer, seller, fee=0.0):
+        # check that seller and buyer have cash and assets before processing trade
+        if not self.agent_has_cash(buyer, price, qty):
+            return 
+        if not self.agent_has_assets(seller, ticker, qty):
+            return 
+        
+        trade = Trade(ticker, qty, price, buyer, seller, self.datetime, fee=fee)
+        self.trade_log.append(trade)
+        if(self.crypto):
+            #NOTE: the `fee` is the network fee and the exchange fee since the exchange fee is added to the transaction before it is added to the blockchain
+            # while not how this works, this is makes calulating the overall fee easier for the simulator
+            self.blockchain.add_transaction(ticker, fee, amount=qty*price, sender=seller, recipient=buyer, dt=self.datetime)
+            self.__update_agents_currency(self.blockchain.mempool.transactions[-1])
+        else:
+            transaction = [
+                {'agent':buyer,'cash_flow':-qty*price,'ticker':ticker,'qty': qty, 'fee':fee, 'type': 'buy'},
+                {'agent':seller,'cash_flow':qty*price,'ticker':ticker,'qty': -qty, 'fee':fee, 'type': 'sell'}
+            ]
+            # self.agents_cash_updates.extend(transaction)
+            self.__update_agents_cash(transaction)
+            # print('transaction: ',transaction)
 
     def get_order_book(self, ticker: str) -> OrderBook:
         """Returns the OrderBook of a given Asset
@@ -115,31 +139,6 @@ class Exchange():
         df.rename(columns={'qty':'volume'},inplace=True)
         return format_dataframe_rows_to_dict(df.tail(limit))
     
-    def _process_trade(self, ticker, qty, price, buyer, seller, fee=0.0):
-        # check that seller and buyer have cash and assets before processing trade
-        if buyer == seller:
-            return
-        if not self.agent_has_cash(buyer, price, qty):
-            return 
-        if not self.agent_has_assets(seller, ticker, qty):
-            return 
-        
-        trade = Trade(ticker, qty, price, buyer, seller, self.datetime, fee=fee)
-        self.trade_log.append(trade)
-        if(self.crypto):
-            #NOTE: the `fee` is the network fee and the exchange fee since the exchange fee is added to the transaction before it is added to the blockchain
-            # while not how this works, this is makes calulating the overall fee easier for the simulator
-            self.blockchain.add_transaction(ticker, fee, amount=qty*price, sender=seller, recipient=buyer, dt=self.datetime)
-            self.__update_agents_currency(self.blockchain.mempool.transactions[-1])
-        else:
-            transaction = [
-                {'agent':buyer,'cash_flow':-qty*price,'ticker':ticker,'qty': qty, 'fee':fee, 'type': 'buy'},
-                {'agent':seller,'cash_flow':qty*price,'ticker':ticker,'qty': -qty, 'fee':fee, 'type': 'sell'}
-            ]
-            # self.agents_cash_updates.extend(transaction)
-            self.__update_agents_cash(transaction)
-            # print('transaction: ',transaction)
-
     def get_best_ask(self, ticker:str) -> LimitOrder:
         """retrieves the current best ask in the orderbook of an asset
 
@@ -342,7 +341,7 @@ class Exchange():
 
     def register_agent(self, name, initial_cash):
         #TODO: use an agent class???
-        self.agents.append({'name':name,'cash':initial_cash,'_transactions':[], 'assets': {}})
+        self.agents.append({'name':name + str(UUID())[0:8],'cash':initial_cash,'_transactions':[], 'assets': {}})
         return {'registered_agent':name}
 
     def get_cash(self, agent_name):
@@ -397,3 +396,11 @@ class Exchange():
                     last_action =agent['_transactions'][-1]['type']
                 info.append({agent['name']: {'cash':agent['cash'],'assets':agent['assets'], 'last_action': last_action }})
         return info
+    
+    def add_cash(self, agent, amount):
+        agent_idx = self.__get_agent_index(agent)
+        if agent_idx is not None:
+            self.agents[agent_idx]['cash'] += amount
+            return {'cash':self.agents[agent_idx]['cash']}
+        else:
+            return {'error': 'agent not found'}

@@ -99,3 +99,6 @@ class Requests():
     
     def get_agents(self):
         return self.make_request('get_agents', {}, self.requester)
+    
+    def add_cash(self, agent, amount):
+        return self.make_request('add_cash', {'agent': agent, 'amount': amount}, self.requester)
