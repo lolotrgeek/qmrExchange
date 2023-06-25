@@ -116,6 +116,14 @@ class Exchange():
         return format_dataframe_rows_to_dict(df.tail(limit))
     
     def _process_trade(self, ticker, qty, price, buyer, seller, fee=0.0):
+        # check that seller and buyer have cash and assets before processing trade
+        if buyer == seller:
+            return
+        if not self.agent_has_cash(buyer, price, qty):
+            return 
+        if not self.agent_has_assets(seller, ticker, qty):
+            return 
+        
         trade = Trade(ticker, qty, price, buyer, seller, self.datetime, fee=fee)
         self.trade_log.append(trade)
         if(self.crypto):
@@ -265,7 +273,8 @@ class Exchange():
         return {"cancelled_all_orders": ticker}
 
     def market_buy(self, ticker: str, qty: int, buyer: str, fee=0.0):
-        if self.agent_has_cash(buyer, self.get_best_ask(ticker).price, qty):
+        best_price = self.get_best_ask(ticker).price
+        if self.agent_has_cash(buyer, best_price, qty):
             fills = []
             for idx, ask in enumerate(self.books[ticker].asks):
                 if ask.creator == buyer:
@@ -281,6 +290,8 @@ class Exchange():
                 if qty == 0:
                     break
             self.books[ticker].asks = [ask for ask in self.books[ticker].asks if ask.qty > 0]
+            if(fills == []):
+                return {"market_buy": "no fills"}
             return {"market_buy": ticker, "buyer": buyer, "fills": fills}
         else:
             return {"market_buy": "insufficient funds"}
@@ -302,6 +313,8 @@ class Exchange():
                 if qty == 0:
                     break
             self.books[ticker].bids = [bid for bid in self.books[ticker].bids if bid.qty > 0]
+            if(fills == []):
+                return {"market_sell": "no fills"}
             return {"market_sell": ticker, "seller": seller, "fills": fills }
         else:
             return {"market_sell": "insufficient assets"}
@@ -316,7 +329,7 @@ class Exchange():
             return agent_assets[ticker] >= qty
         else: 
             return False
-
+        
     @property
     def trades(self):
         return pd.DataFrame.from_records([t.to_dict() for t in self.trade_log]).set_index('dt')
@@ -343,7 +356,7 @@ class Exchange():
             agent_idx = self.__get_agent_index(side['agent'])
             if agent_idx is not None:
                 self.agents[agent_idx]['cash'] += side['cash_flow']
-                self.agents[agent_idx]['_transactions'].append({'dt':self.datetime,'cash_flow':side['cash_flow'],'ticker':side['ticker'],'qty':side['qty']})
+                self.agents[agent_idx]['_transactions'].append({'dt':self.datetime,'cash_flow':side['cash_flow'],'ticker':side['ticker'],'qty':side['qty'], 'type': side['type']})
                 if side['ticker'] in self.agents[agent_idx]['assets']: 
                     # print('updating... ',side['type'] , ' ', self.agents[agent_idx]['name'],' ',self.agents[agent_idx]['assets'][side['ticker']],'to',self.agents[agent_idx]['assets'][side['ticker']] + side['qty'])
                     self.agents[agent_idx]['assets'][side['ticker']] += side['qty']
@@ -371,3 +384,16 @@ class Exchange():
     
     def get_agents(self):
         return self.agents
+    
+    def total_cash(self):
+        return sum(agent['cash'] for agent in self.agents if agent['name'] != 'init_seed' )
+    
+    def agents_cash(self):
+        info = []
+        for agent in self.agents:
+            if agent['name'] != 'init_seed':
+                last_action = None
+                if len(agent['_transactions']) > 0:
+                    last_action =agent['_transactions'][-1]['type']
+                info.append({agent['name']: {'cash':agent['cash'],'assets':agent['assets'], 'last_action': last_action }})
+        return info
