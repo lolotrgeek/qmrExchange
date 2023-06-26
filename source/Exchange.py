@@ -341,8 +341,9 @@ class Exchange():
 
     def register_agent(self, name, initial_cash):
         #TODO: use an agent class???
-        self.agents.append({'name':name + str(UUID())[0:8],'cash':initial_cash,'_transactions':[], 'assets': {}})
-        return {'registered_agent':name}
+        registered_name = name + str(UUID())[0:8]
+        self.agents.append({'name':registered_name,'cash':initial_cash,'_transactions':[], 'assets': {}})
+        return {'registered_agent':registered_name}
 
     def get_cash(self, agent_name):
         return {'cash':self.get_agent(agent_name)['cash']}

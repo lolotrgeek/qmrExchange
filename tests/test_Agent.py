@@ -16,7 +16,7 @@ class TestAgent(unittest.TestCase):
         self.agent = Agent(self.agent_name, self.tickers, self.aum, requester=self.requester)
 
     def test_init(self):
-        self.assertEqual(self.agent.name, self.agent_name+ str(self.agent.id)[0:8])
+        self.assertEqual(self.agent.name, self.agent_name)
         self.assertEqual(self.agent.tickers, self.tickers)
         self.assertEqual(self.agent.cash, self.aum)
         self.assertEqual(self.agent.initial_cash, self.aum)
@@ -28,9 +28,14 @@ class RegisterAgentTest(unittest.TestCase):
         self.aum = 10000
         self.requester = Requests(MockRequester())
         self.agent = Agent(self.agent_name, self.tickers, self.aum, requester=self.requester)
+        self.local_register = self.agent.register()
+        self.remote_register = self.requester.register_agent(self.agent.name, self.aum)
 
     def test_register_agent(self):
-        self.assertEqual(self.agent.register(), self.requester.register_agent(self.agent.name, self.agent.tickers))
+        self.assertEqual('registered_agent' in self.local_register, True)
+        self.assertEqual('registered_agent' in self.remote_register, True)
+        self.assertEqual(self.local_register['registered_agent'][:9], self.agent_name)
+        self.assertEqual(self.remote_register['registered_agent'][:9], self.agent_name)
 
 class GetLatestTradeTest(unittest.TestCase):
     def setUp(self) -> None:
@@ -110,7 +115,7 @@ class LimitSellTest(unittest.TestCase):
         self.requester.debug = True
 
         self.agent = Agent(self.agent_name, self.tickers, self.aum, requester=self.requester)
-        self.agent.register()
+        self.agent_registered = self.agent.register()['registered_agent']
 
     def test_limit_sell(self):
         self.agent.limit_buy("AAPL", 152, 1)

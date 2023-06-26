@@ -116,7 +116,7 @@ class GetOrderBookTest(unittest.TestCase):
         self.assertEqual(type(response), dict)
         self.assertEqual(len(response['bids']), 2)
         self.assertEqual(len(response['asks']), 1)
-        self.assertEqual(response['bids'][0]['creator'], 'buyer1')
+        self.assertEqual(response['bids'][0]['creator'], self.mock_requester.responder.agent)
         self.assertEqual(response['bids'][0]['dt'], '2023-01-01 00:00:00')
         self.assertEqual(type(response['bids'][0]['id']), str)
         self.assertEqual(response['bids'][0]['price'], 149)
@@ -177,7 +177,7 @@ class GetBestBidTest(unittest.TestCase):
         self.assertEqual(best_bid['ticker'], 'AAPL')
         self.assertEqual(best_bid['price'], 149)
         self.assertEqual(best_bid['qty'], 1)
-        self.assertEqual(best_bid['creator'], 'buyer1')
+        self.assertEqual(best_bid['creator'], self.mock_requester.responder.agent)
 
 class GetBestAskTest(unittest.TestCase):
     def setUp(self):
@@ -208,12 +208,12 @@ class LimitBuyTest(unittest.TestCase):
         self.requests = Requests(self.mock_requester)
 
     def test_limit_buy(self):
-        response = self.requests.make_request('limit_buy', {'ticker': "AAPL", 'price': 149, 'qty': 2, 'creator': 'buyer1', 'fee': 0.0}, self.mock_requester)
+        response = self.requests.make_request('limit_buy', {'ticker': "AAPL", 'price': 149, 'qty': 2, 'creator': self.mock_requester.responder.agent, 'fee': 0.0}, self.mock_requester)
         order = response
         self.assertEqual(order['ticker'], "AAPL")
         self.assertEqual(order['price'], 149)
         self.assertEqual(order['qty'], 2)
-        self.assertEqual(order['creator'], "buyer1")
+        self.assertEqual(order['creator'], self.mock_requester.responder.agent)
         self.assertEqual(order['fee'], 0.0)
 
 class LimitSellTest(unittest.TestCase):
@@ -246,7 +246,7 @@ class CancelAllOrdersTest(unittest.TestCase):
         self.requests = Requests(self.mock_requester)
 
     def test_cancel_all_orders(self):
-        response = self.requests.make_request('cancel_all_orders', {'ticker': 'AAPL', 'agent': 'buyer1'}, self.mock_requester)
+        response = self.requests.make_request('cancel_all_orders', {'ticker': 'AAPL', 'agent': self.mock_requester.responder.agent}, self.mock_requester)
         self.assertEqual(response, {'cancelled_all_orders': 'AAPL'})
 
 class GetPriceBarsTest(unittest.TestCase):
@@ -272,7 +272,7 @@ class GetCashTest(unittest.TestCase):
         self.requests = Requests(self.mock_requester)
 
     def test_get_cash(self):
-        response = self.requests.make_request('cash', {'agent': 'buyer1'}, self.mock_requester)
+        response = self.requests.make_request('cash', {'agent': self.mock_requester.responder.agent}, self.mock_requester)
         self.assertEqual(response, {'cash': 100000})
 
 class GetAssetsTest(unittest.TestCase):
@@ -291,7 +291,8 @@ class RegisterAgentTest(unittest.TestCase):
 
     def test_register_agent(self):
         response = self.requests.make_request('register_agent', {'name': 'buyer1', 'initial_cash': 100000}, self.mock_requester)
-        self.assertEqual(response, {'registered_agent': 'buyer1'})
+        self.assertEqual('registered_agent' in response, True)
+        self.assertEqual(response['registered_agent'][:6], 'buyer1')
 
 class MarketBuyTest(unittest.TestCase):
     def setUp(self):
@@ -299,8 +300,8 @@ class MarketBuyTest(unittest.TestCase):
         self.requests = Requests(self.mock_requester)
 
     def test_market_buy(self):
-        response = self.requests.make_request('market_buy', {'ticker': 'AAPL', 'qty': 1, 'buyer': 'buyer1', 'fee': 0.0}, self.mock_requester)
-        self.assertEqual(response, {'market_buy': 'AAPL', 'buyer': 'buyer1', 'fills': [{'qty': 1, 'price': 151.5, 'fee': 0.0}]})
+        response = self.requests.make_request('market_buy', {'ticker': 'AAPL', 'qty': 1, 'buyer': self.mock_requester.responder.agent, 'fee': 0.0}, self.mock_requester)
+        self.assertEqual(response, {'market_buy': 'AAPL', 'buyer': self.mock_requester.responder.agent, 'fills': [{'qty': 1, 'price': 151.5, 'fee': 0.0}]})
 
 class MarketSellTest(unittest.TestCase):
     def setUp(self) -> None:
@@ -327,8 +328,8 @@ class GetAgentTest(unittest.TestCase):
         self.requests = Requests(self.mock_requester)
 
     def test_get_agent(self):
-        response = self.requests.make_request('get_agent', {'name': 'buyer1'}, self.mock_requester)
-        self.assertDictEqual(response, {'name': 'buyer1', 'cash': 100000,'_transactions': [], 'assets': {}})
+        response = self.requests.make_request('get_agent', {'name': self.mock_requester.responder.agent}, self.mock_requester)
+        self.assertDictEqual(response, {'name': self.mock_requester.responder.agent, 'cash': 100000,'_transactions': [], 'assets': {}})
 
 class GetAgentsTest(unittest.TestCase):
     def setUp(self):
@@ -337,7 +338,17 @@ class GetAgentsTest(unittest.TestCase):
 
     def test_get_agents(self):
         response = self.requests.make_request('get_agents', {}, self.mock_requester)
-        expected = [{'_transactions': [{'cash_flow': -150000, 'dt': '2023-01-01 00:00:00', 'qty': 1000, 'ticker': 'AAPL'}, {'cash_flow': 150000, 'dt': '2023-01-01 00:00:00', 'qty': -1000, 'ticker': 'AAPL'}], 'assets': {'AAPL': 1000}, 'cash': 150000, 'name': 'init_seed'}, {'_transactions': [], 'assets': {}, 'cash': 100000, 'name': 'buyer1'}]
+        expected = [
+            {
+                '_transactions': 
+                    [
+                        {'cash_flow': -150000, 'dt': '2023-01-01 00:00:00', 'qty': 1000, 'ticker': 'AAPL', 'type': 'buy'}, 
+                        {'cash_flow': 150000, 'dt': '2023-01-01 00:00:00', 'qty': -1000, 'ticker': 'AAPL', 'type': 'sell'}
+                    ],
+                'assets': {'AAPL': 1000}, 'cash': 150000, 'name': 'init_seed'
+            }, 
+            {'_transactions': [], 'assets': {}, 'cash': 100000, 'name': self.mock_requester.responder.agent}
+        ]
         self.assertEqual(response, expected)        
 
 if __name__ == '__main__':

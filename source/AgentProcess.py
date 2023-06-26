@@ -187,6 +187,7 @@ class Agent():
         agent = self.requests.register_agent(self.name, self.initial_cash)
         if 'registered_agent' in agent:
             self.name = agent['registered_agent']
+            return agent
         else:
             return 'UnRegistered Agent'
 

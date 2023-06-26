@@ -18,8 +18,8 @@ class MockResponder():
     def __init__(self):
         self.exchange = Exchange(datetime=datetime(2023, 1, 1))
         self.exchange.create_asset("AAPL", seed_price=150, seed_bid=0.99, seed_ask=1.01)
-        self.exchange.register_agent("buyer1", 100000)
-        self.mock_order = self.exchange.limit_buy("AAPL", price=149, qty=1, creator="buyer1")
+        self.agent = self.exchange.register_agent("buyer1", 100000)['registered_agent']
+        self.mock_order = self.exchange.limit_buy("AAPL", price=149, qty=1, creator=self.agent)
 
 
     def callback(self, msg):
@@ -44,4 +44,5 @@ class MockResponder():
         elif msg['topic'] == 'register_agent': return self.exchange.register_agent(msg['name'], msg['initial_cash'])
         elif msg['topic'] == 'get_agent': return self.exchange.get_agent(msg['name'])
         elif msg['topic'] == 'get_agents': return dumps(self.exchange.get_agents())
+        elif msg['topic'] == 'add_cash': return dumps(self.exchange.add_cash(msg['agent'], msg['amount']))
         else: return f'unknown topic {msg["topic"]}'
