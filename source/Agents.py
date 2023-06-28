@@ -1,14 +1,16 @@
 from .AgentProcess import Agent
 import random
+from time import sleep
 
 class RandomMarketTaker(Agent):
-    def __init__(self,name,tickers, aum=10_000,prob_buy=.2,prob_sell=.2,qty_per_order=1,seed=None, requester=None):
+    def __init__(self,name,tickers, aum=10000,prob_buy=.2,prob_sell=.2,qty_per_order=1,seed=None, requester=None):
         Agent.__init__(self, name, tickers, aum, requester=requester)
         if  prob_buy + prob_sell> 1:
             raise ValueError("Sum of probabilities cannot be greater than 1.") 
         self.prob_buy = prob_buy
         self.prob_sell = prob_sell
         self.qty_per_order = qty_per_order
+        self.assets = {}
         self.tickers
         self.aum = aum
 
@@ -19,12 +21,83 @@ class RandomMarketTaker(Agent):
 
     
     def next(self):
+        self.cash = self.get_cash()['cash']
+        self.assets = self.get_assets()['assets']
+
+        if self.cash <= 0 and all(asset == 0 for asset in self.assets.values()) == True:
+            print(self.name, "has no cash and no assets. Terminating.", self.cash, self.assets)
+            return False
+
         for ticker in self.tickers:
-            action = random.choices(['buy','close',None], weights=[self.prob_buy, self.prob_sell, 1 - self.prob_buy - self.prob_sell])[0]
+            action = None
+
+            if self.cash > 0 and ticker in self.assets and self.assets[ticker] > 0:
+                action = random.choices(['buy','close',None], weights=[self.prob_buy, self.prob_sell, 1 - self.prob_buy - self.prob_sell])[0]
+            elif self.cash > 0:
+                action = 'buy'
+            elif ticker in self.assets and self.assets[ticker] > 0:
+                action = 'close'
+            
             if action == 'buy':
-                self.market_buy(ticker,self.qty_per_order)
+                order = self.market_buy(ticker,self.qty_per_order)
+
             elif action == 'close':
-                self.market_sell(ticker,self.get_position(ticker))
+                order = self.market_sell(ticker,self.get_position(ticker))
+
+            # if order is not None:
+            #     print(order)
+                    
+        return True
+
+class LowBidder(Agent):
+    def __init__(self, name, tickers, aum, qty_per_order=1, requester=None):
+        Agent.__init__(self, name, tickers, aum, requester=requester)
+        self.qty_per_order = qty_per_order
+        self.tickers = tickers
+        self.assets = {}
+        self.aum = aum
+
+    def next(self):
+        self.cash = self.get_cash()['cash']
+        self.assets = self.get_assets()['assets']
+
+        if self.cash <= 0 and all(asset == 0 for asset in self.assets.values()) == True:
+            print(self.name, "has no cash and no assets. Terminating.", self.cash, self.assets)
+            return False
+                
+        for ticker in self.tickers:
+            latest_trade = self.get_latest_trade(ticker)
+            if latest_trade is None or 'price' not in latest_trade:
+                break
+            price = latest_trade['price']
+            
+            if self.cash < price:
+                self.cancel_all_orders(ticker)
+                self.limit_sell(ticker, price-len(self.assets) , qty=self.qty_per_order)
+            else:
+                self.limit_buy(ticker, price+len(self.assets), qty=self.qty_per_order)
+        return True
+
+class GreedyScalper(Agent):
+    '''waits for initial supply to dry up, then starts inserting bids very low and asks very high'''
+    def __init__(self, name, tickers, aum, qty_per_order=1, requester=None):
+        Agent.__init__(self, name, tickers, aum, requester=requester)
+        self.qty_per_order = qty_per_order
+        self.tickers = tickers
+        self.aum = aum
+
+    def next(self):
+        get_supply = self.get_assets('init_seed')
+
+        for ticker in self.tickers:
+            if ticker in get_supply and get_supply[ticker] == 0:
+                latest_trade = self.get_latest_trade(ticker)
+                if latest_trade is None or 'price' not in latest_trade:
+                    break
+                price = latest_trade['price'] / 2
+                self.cancel_all_orders(ticker)
+                self.limit_buy(ticker, price, qty=self.qty_per_order)
+                self.limit_sell(ticker, price * 2, qty=self.qty_per_order)
         return True
 
 class NaiveMarketMaker(Agent):
@@ -34,16 +107,25 @@ class NaiveMarketMaker(Agent):
         self.tickers = tickers
         self.spread_pct = spread_pct
         self.aum = aum
+        self.assets = None
+        self.can_buy = True
+        self.can_sell = {ticker: False for ticker in self.tickers}
 
     def next(self):
+        self.cash = self.get_cash()['cash']
+        self.assets = self.get_assets()['assets']
+        if self.cash <= 0:
+            print(self.name, "is out of cash:", self.cash)
+            return False
+
         for ticker in self.tickers:
             latest_trade = self.get_latest_trade(ticker)
             if latest_trade is None or 'price' not in latest_trade:
                 break
             price = latest_trade['price']
             self.cancel_all_orders(ticker)
-            self.limit_buy(ticker, price * (1-self.spread_pct/2), qty=self.qty_per_order)
-            self.limit_sell(ticker, price * (1+self.spread_pct/2), qty=self.qty_per_order)
+            buy_order = self.limit_buy(ticker, price * (1-self.spread_pct/2), qty=self.qty_per_order)
+            sell_order = self.limit_sell(ticker, price * (1+self.spread_pct/2), qty=self.qty_per_order)
         return True
             
 class CryptoMarketMaker(Agent):
