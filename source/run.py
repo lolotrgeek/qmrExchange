@@ -16,7 +16,7 @@ from rich.table import Table
 
 tickers = ['XYZ']
 agents = []
-num_agents = 10
+num_agents = 20
 start_time = datetime(1700,1,1)
 
 def run_clock():
