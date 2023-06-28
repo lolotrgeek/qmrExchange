@@ -12,6 +12,12 @@ This implements qmrExchange where agents and the exchange run in separate proces
 python main.py
 ```
 
+Run dashboard
+```
+cd source/app/dashboard
+npm run start
+```
+
 Add agent to `Agents.py` extending `Agent` class from `AgentProcess`, then import the Agent into `run.py` -> `def run_agent():` to multiprocess or run in separate process manually.
 
 ## Adding Features
