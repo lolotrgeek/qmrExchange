@@ -1,46 +1,50 @@
 import traceback
 import zmq
+import zmq.asyncio
+import asyncio
+asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-class Requester():
+class Requester:
     def __init__(self, channel='5556'):
-            self.context = zmq.Context()
-            self.socket = self.context.socket(zmq.REQ)
-            self.socket.connect(f'tcp://127.0.0.1:{channel}')
-            self.poller = zmq.Poller()
-            self.poller.register(self.socket, zmq.POLLIN)
+        self.channel = channel
 
-    def request(self, msg):
+    async def connect(self):
+        self.context = zmq.asyncio.Context()
+        self.socket = self.context.socket(zmq.REQ)
+        self.socket.connect(f'tcp://127.0.0.1:{self.channel}')
+        self.poller = zmq.asyncio.Poller()
+        self.poller.register(self.socket, zmq.POLLIN)
+
+    async def request(self, msg):
         try:
-            self.socket.send_json(msg)
-            # return self.socket.recv_json()
-            evts = dict(self.poller.poll(1000))
-            if self.socket in evts:
-                return self.socket.recv_json(zmq.DONTWAIT)
-            else:
-                return None
+            await self.socket.send_json(msg)
+            return await self.socket.recv_json()
         except zmq.ZMQError as e:
             print("[Requester Error]", e, "Request:", msg)
-            return None            
+            return None
         except Exception as e:
             print("[Requester Error]", e, "Request:", msg)
             print(traceback.format_exc())
             return None
 
-    def close(self):
-        self.socket.close(0)
-        self.context.term()
+    async def close(self):
+        await self.socket.close()
+        await self.context.term()
 
-class Responder():
-    def __init__(self, channel='5557'):
-        self.context = zmq.Context()
+class Responder:
+    def __init__(self, channel='5556'):
+        self.channel = channel
+
+    async def connect(self):
+        self.context = zmq.asyncio.Context()
         self.socket = self.context.socket(zmq.REP)
-        self.socket.connect(f'tcp://127.0.0.1:{channel}')
+        self.socket.bind(f'tcp://127.0.0.1:{self.channel}')
 
-    def respond(self, callback = lambda msg: msg):
+    async def respond(self, callback=lambda msg: msg): 
         try:
-            msg = self.socket.recv_json()
-            response = callback(msg)
-            self.socket.send_json(response)
+            msg = await self.socket.recv_json()
+            response = await callback(msg)
+            await self.socket.send_json(response)
             return response
         except zmq.ZMQError as e:
             print("[Response Error]", e, "Request:", msg)
@@ -48,31 +52,32 @@ class Responder():
         except Exception as e:
             print("[Response Error]", e, "Request:", msg)
             print(traceback.format_exc())
-            self.socket.send_json(None)
+            await self.socket.send_json(None)
             return None
 
-
-
-class Broker():
+class Broker:
     def __init__(self, request_side='5556', response_side='5557'):
-        self.context = zmq.Context()
+        self.request_side = request_side
+        self.response_side = response_side
+
+    async def start(self):
+        self.context = zmq.asyncio.Context()
         self.requests_socket = self.context.socket(zmq.ROUTER)
-        self.requests_socket.bind(f"tcp://127.0.0.1:{request_side}")
+        self.requests_socket.bind(f"tcp://127.0.0.1:{self.request_side}")
         self.responses_socket = self.context.socket(zmq.DEALER)
-        self.responses_socket.bind(f"tcp://127.0.0.1:{response_side}")
+        self.responses_socket.bind(f"tcp://127.0.0.1:{self.response_side}")
         self.mon_socket = self.context.socket(zmq.PUB)
         self.mon_socket.bind("tcp://127.0.0.1:6969")
 
-    def route(self, cb=None):
+    async def route(self, cb=None):
         try:
-            zmq.proxy(self.requests_socket, self.responses_socket, self.mon_socket)
+            await zmq.asyncio.proxy(self.requests_socket, self.responses_socket, self.mon_socket)
         except Exception as e:
             print("[Broker Error]", e)
 
+
 class Pusher():
     def __init__(self, channel='5558'):
-        self.highwatermark = 3 # how many messages to keep in , reduce the throughput but decreases a pull returning None
-        self.lowwatermark = 1
         self.context = zmq.Context()
         self.zmq_socket = self.context.socket(zmq.PUSH)
         self.address = f"tcp://127.0.0.1:{channel}"

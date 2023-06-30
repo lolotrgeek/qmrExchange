@@ -5,12 +5,13 @@ from source.types.OrderBook import OrderBook
 from source.Exchange import Exchange
 from source.Agents import RandomMarketTaker, NaiveMarketMaker, CryptoMarketMaker, CryptoMarketTaker
 from source.run import main
+import asyncio
 import sys
 import traceback
 
 if __name__ == '__main__':
     try:
-        main()        
+        asyncio.run(main())        
         print('done...')
         exit(0)
     except:
