@@ -28,24 +28,24 @@ class RandomMarketTaker(Agent):
             print(self.name, "has no cash and no assets. Terminating.", self.cash, self.assets)
             return False
 
-        for ticker in self.tickers:
-            action = None
+        ticker = random.choice(self.tickers)
+        action = None
 
-            if self.cash > 0 and ticker in self.assets and self.assets[ticker] > 0:
-                action = random.choices(['buy','close',None], weights=[self.prob_buy, self.prob_sell, 1 - self.prob_buy - self.prob_sell])[0]
-            elif self.cash > 0:
-                action = 'buy'
-            elif ticker in self.assets and self.assets[ticker] > 0:
-                action = 'close'
-            
-            if action == 'buy':
-                order = await self.market_buy(ticker,self.qty_per_order)
+        if self.cash > 0 and ticker in self.assets and self.assets[ticker] > 0:
+            action = random.choices(['buy','close',None], weights=[self.prob_buy, self.prob_sell, 1 - self.prob_buy - self.prob_sell])[0]
+        elif self.cash > 0:
+            action = 'buy'
+        elif ticker in self.assets and self.assets[ticker] > 0:
+            action = 'close'
+        
+        if action == 'buy':
+            order = await self.market_buy(ticker,self.qty_per_order)
 
-            elif action == 'close':
-                order = await self.market_sell(ticker,(await self.get_position(ticker)))
+        elif action == 'close':
+            order = await self.market_sell(ticker,(await self.get_position(ticker)))
 
-            # if order is not None:
-            #     print(order)
+        # if order is not None:
+        #     print(order)
                     
         return True
 
