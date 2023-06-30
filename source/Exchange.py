@@ -35,10 +35,10 @@ class Exchange():
             seed_ask (float, optional): Limit price of an initial sell order, expressed as percentage of the seed_price. async defaults to 1.01.
         """
         self.books[ticker] = OrderBook(ticker)
-        self.agents.append({'name':'init_seed','cash':market_qty * seed_price,'_transactions':[], 'assets': {ticker: market_qty}})
-        await self._process_trade(ticker, market_qty, seed_price, 'init_seed', 'init_seed')
-        await self.limit_buy(ticker, seed_price * seed_bid, 1, 'init_seed')
-        await self.limit_sell(ticker, seed_price * seed_ask, market_qty, 'init_seed')
+        self.agents.append({'name':'init_seed_'+ticker,'cash':market_qty * seed_price,'_transactions':[], 'assets': {ticker: market_qty}})
+        await self._process_trade(ticker, market_qty, seed_price, 'init_seed_'+ticker, 'init_seed_'+ticker)
+        await self.limit_buy(ticker, seed_price * seed_bid, 1, 'init_seed_'+ticker)
+        await self.limit_sell(ticker, seed_price * seed_ask, market_qty, 'init_seed_'+ticker)
         return self.books[ticker]
    
     async def _process_trade(self, ticker, qty, price, buyer, seller, fee=0.0):
@@ -86,8 +86,12 @@ class Exchange():
         returns:
             Trade
         """
-        latest_trade = next(trade for trade in self.trade_log[::-1] if trade.ticker == ticker).to_dict()
-        return latest_trade
+        print(ticker)
+        for trade in self.trade_log[::-1]:
+            if trade.ticker == ticker:
+                return trade.to_dict()
+            else:
+                return {'error': 'no trades found'}
 
     async def get_quotes(self, ticker):
         try:
@@ -321,11 +325,11 @@ class Exchange():
             return {"market_sell": "insufficient assets"}
 
     async def agent_has_cash(self, agent, price, qty):
-        agent_cash = await self.get_cash(agent)
+        agent_cash = (await self.get_cash(agent))
         return agent_cash['cash'] >= price * qty
     
     async def agent_has_assets(self, agent, ticker, qty):
-        agent_assets = await self.get_assets(agent)
+        agent_assets = (await self.get_assets(agent))
         if ticker in agent_assets['assets']:
             return agent_assets['assets'][ticker] >= qty
         else: 
