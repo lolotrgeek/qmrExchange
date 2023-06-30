@@ -10,14 +10,17 @@ from rich.table import Table
 import asyncio
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-tickers = ['XYZ']
+tickers = ['XYZ', 'ABC', 'DEF', 'GHI', 'JKL', 'MNO', 'PQR', 'STU', 'VWX', 'YZA', 'BCD', 'EFG', 'HIJ', 'KLM', 'NOP', 'QRS', 'TUV', 'WXY', 'ZAB', 'CDE', 'FGH', 'IJK', 'LMN', 'OPQ', 'RST', 'UVW']
 
 async def run_exchange(exchange_channel = 5570):
     try: 
         exchange = Exchange(datetime=datetime(1700,1,1))
-        await exchange.create_asset(tickers[0]) 
-        responder = Responder(exchange_channel)
+        for ticker in tickers:
+            asset = (await exchange.create_asset(ticker))
+            # print(asset.asks, asset.bids)
+        print(f'{len(tickers)} assets created.')
 
+        responder = Responder(exchange_channel)
         await responder.connect()
         clock = Clock()
 
