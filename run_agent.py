@@ -11,12 +11,10 @@ tickers = ['XYZ']
 
 async def run_agent(exchange_channel = 5570):
     try:
-        print("running agent")
         agent = None
         picker = randint(0,3)
         requester = Requester(channel=exchange_channel)
         await requester.connect()
-        print(f"Agent {picker} connected")
         if picker == 0:
             agent =  NaiveMarketMaker(name='market_maker', tickers=tickers, aum=1_000, spread_pct=0.005, qty_per_order=4, requester=Requests(requester))
         elif picker == 1:

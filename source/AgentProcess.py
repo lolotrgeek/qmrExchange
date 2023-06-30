@@ -127,7 +127,7 @@ class Agent():
         return order
 
     async def get_position(self,ticker):
-        agent = self.requests.get_agent(self.name)
+        agent = (await self.requests.get_agent(self.name))
         _transactions = agent['_transactions']
         return sum(t['qty'] for t in _transactions if t['ticker'] == ticker)
 

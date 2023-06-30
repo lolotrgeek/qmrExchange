@@ -50,10 +50,9 @@ async def run_exchange(exchange_channel = 5570):
         last_latest_trade = None
         while True:
             exchange.datetime = clock.tick()
-            print (exchange.datetime)
             msg = await responder.respond(callback)
-            if msg == None:
-                continue
+            # if msg == None:
+            #     continue
             latest_trade = await exchange.get_latest_trade('XYZ')
             if(last_latest_trade != latest_trade):
                 last_latest_trade = latest_trade

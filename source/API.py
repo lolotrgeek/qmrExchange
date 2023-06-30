@@ -4,6 +4,7 @@ from time import sleep
 from .Requests import Requests
 import flask_monitoringdashboard as dashboard
 import logging
+#TODO: migrate to Quart for async https://github.com/pallets/quart
 
 def API(requester):
     app = Flask(__name__)
