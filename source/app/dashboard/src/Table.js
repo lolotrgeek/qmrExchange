@@ -15,9 +15,9 @@ const TableComponent = ({ ticker }) => {
 
     useEffect(() => {
         const fetchData = async () => {
-            const agentsResponse = await fetch(`${base_url}/api/v1/get_agents`)
-            const agentsData = await agentsResponse.json()
-            setAgents(agentsData)
+            // const agentsResponse = await fetch(`${base_url}/api/v1/get_agents`)
+            // const agentsData = await agentsResponse.json()
+            // setAgents(agentsData)
 
             const getLatestTrade = await fetch(`${base_url}/api/v1/get_latest_trade?ticker=${ticker}`)
             const getLatestTradeData = await getLatestTrade.json()
@@ -28,9 +28,9 @@ const TableComponent = ({ ticker }) => {
             // console.log(candleData)
             // setCandles(candleData)
 
-            // const orderBookResponse = await fetch(`${base_url}/api/v1/get_order_book?ticker=${ticker}`)
-            // const orderBookData = await orderBookResponse.json()
-            // setOrderBook(orderBookData)
+            const orderBookResponse = await fetch(`${base_url}/api/v1/get_order_book?ticker=${ticker}`)
+            const orderBookData = await orderBookResponse.json()
+            setOrderBook(orderBookData)
 
             // const tradesResponse = await fetch(`${base_url}/api/v1/get_trades?ticker=${ticker}`)
             // const tradesData = await tradesResponse.json()
@@ -73,13 +73,13 @@ const TableComponent = ({ ticker }) => {
                 <tbody>
                     <tr>
                         <td>{latestTrade.price}</td>
-                        <td>{latestTrade.size}</td>
-                        <td>{latestTrade.time}</td>
+                        <td>{latestTrade.qty}</td>
+                        <td>{latestTrade.dt}</td>
                     </tr>
                 </tbody>
             </table>
-            <h2>Agents</h2>
-            <table>
+            {/* <h2>Agents</h2> */}
+            {/* <table>
                 <thead>
                     <tr>
                         <th>Agent</th>
@@ -94,11 +94,10 @@ const TableComponent = ({ ticker }) => {
                             <td>{agent.name}</td>
                             <td>{JSON.stringify(agent.assets)}</td>
                             <td>{agent.cash}</td>
-                            {/* <td>{JSON.stringify(agent._transactions)}</td> */}
                         </tr>
                     ))}
                 </tbody>
-            </table>
+            </table> */}
             {/* <table>
                 <thead>
                     <tr>
@@ -113,7 +112,7 @@ const TableComponent = ({ ticker }) => {
                     ))}
                 </tbody>
             </table> */}
-                        {/* <h2>Order Book</h2>
+                        <h2>Order Book</h2>
             <table>
                 <thead>
                     <tr>
@@ -209,7 +208,7 @@ const TableComponent = ({ ticker }) => {
                         <td>{JSON.stringify(midprice)}</td>
                     </tr>
                 </tbody>
-            </table> */}
+            </table>
         </div>
     )
 }

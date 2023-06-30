@@ -51,15 +51,8 @@ async def run_exchange(exchange_channel = 5570):
         while True:
             exchange.datetime = clock.tick()
             msg = await responder.respond(callback)
-            # if msg == None:
-            #     continue
-            latest_trade = await exchange.get_latest_trade('XYZ')
-            if(last_latest_trade != latest_trade):
-                last_latest_trade = latest_trade
-                print(latest_trade)
-
-                # print("UnBought Supply: ", exchange.get_assets('run_seed'), "Total Cash", exchange.agents_cash())
-                # print(exchange.get_order_book('XYZ').to_dict())
+            if msg == None:
+                continue
     except Exception as e:
         print("[Exchange Error] ", e)
         print(traceback.print_exc())

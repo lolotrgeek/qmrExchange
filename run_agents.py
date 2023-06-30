@@ -9,7 +9,7 @@ print(file)
 
 if __name__ == '__main__':
     try:
-        num_agents = 50
+        num_agents = 100
         agents = []
 
         for i in range(num_agents):

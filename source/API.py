@@ -1,19 +1,15 @@
-from flask import Flask, jsonify, request
-from flask_socketio import SocketIO, emit
-from time import sleep
+from quart import Quart, websocket, jsonify, request
 from .Requests import Requests
-import flask_monitoringdashboard as dashboard
 import logging
 #TODO: migrate to Quart for async https://github.com/pallets/quart
 
 def API(requester):
-    app = Flask(__name__)
-    logging.getLogger('werkzeug').disabled = True
-    # dashboard.bind(app)
+    app = Quart(__name__)
     requests = Requests(requester)
+
     @app.route('/')
     async def index():
-        return await "hello"
+        return "hello"
 
     @app.route('/api/v1/sim_time', methods=['GET'])
     async def get_sim_time():
@@ -197,25 +193,4 @@ def API(requester):
 
 #TODO: for this to work we need to push data from the exchange and pull it to here then re-broadcast via websocket
 async def WebSockets(app, sim):
-    socketio = SocketIO(app, cors_allowed_origins="*")
-
-    @socketio.on('connect')
-    async def handle_connect():
-        print('Client connected')
-        # Send initial order book data to the client
-        # emit('order_book', sim.exchange.get_order_book())
-
-
-    @socketio.on('/ws/v1/get_order_book')
-    async def handle_get_order_book(data):
-        ticker = data['ticker'] 
-        if(ticker is None or ticker == ""):
-            return await jsonify({'message': 'Ticker not found.'})
-        order_book = sim.exchange.get_order_book(ticker)
-        if order_book:
-            emit('order_book', jsonify({"bids": order_book.df['bids'].to_dict(), "asks": order_book.df['asks'].to_dict()}))
-        else:
-            emit('order_book', jsonify({'message': 'Order book not found.'}))
-        sleep(1)
-
-    return await socketio
+    pass
