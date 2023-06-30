@@ -86,12 +86,11 @@ class Exchange():
         returns:
             Trade
         """
-        print(ticker)
-        for trade in self.trade_log[::-1]:
-            if trade.ticker == ticker:
-                return trade.to_dict()
-            else:
-                return {'error': 'no trades found'}
+        latest_trade = next(trade for trade in self.trade_log[::-1] if trade.ticker == ticker)
+        if isinstance(latest_trade, Trade):
+            return latest_trade.to_dict()
+        else:
+            return {'error': 'no trades found'}
 
     async def get_quotes(self, ticker):
         try:
