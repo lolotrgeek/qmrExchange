@@ -14,7 +14,7 @@ class Exchange():
     def __init__(self, datetime= None):
         self.agents = []
         self.books = {}
-        self.trade_log: List[Trade] = []
+        self.trade_log: List[Trade] = [] #TODO: this is going to get to big to hold in memory, need a DB
         self.datetime = datetime
         self.agents_cash_updates = []
         self.fees = Fees()
@@ -412,3 +412,43 @@ class Exchange():
             return {'cash':self.agents[agent_idx]['cash']}
         else:
             return {'error': 'agent not found'}
+        
+    async def calculate_market_cap(price, shares_outstanding):
+        """
+        Calculates the market capitalization of a company
+        Args: 
+        
+        price: the current price of the stock
+        
+        shares_outstanding : the number of shares currently held by investors
+        """
+        market_cap = price * shares_outstanding
+        return market_cap
+    
+
+    async def get_shares_outstanding(self, ticker):
+        """
+        Calculates the number of shares outstanding for a given ticker
+        Args: 
+        
+        ticker: the ticker of the asset
+        """
+        shares_outstanding = 0
+        for agent in self.agents:
+            if ticker in agent['assets']:
+                shares_outstanding += agent['assets'][ticker]
+        return shares_outstanding
+    
+    # write a method that gets all the agents hold a given ticker
+    async def get_agents_holding(self, ticker):
+        """
+        Returns a list of agents holding a given ticker
+        Args: 
+        
+        ticker: the ticker of the asset
+        """
+        agents_holding = []
+        for agent in self.agents:
+            if ticker in agent['assets']:
+                agents_holding.append(agent)
+        return agents_holding
