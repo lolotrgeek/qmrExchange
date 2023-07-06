@@ -103,3 +103,6 @@ class Requests():
     
     async def add_cash(self, agent, amount):
         return await self.make_request('add_cash', {'agent': agent, 'amount': amount}, self.requester)
+    
+    async def get_agents_holding(self, ticker):
+        return await self.make_request('get_agents_holding', {'ticker': ticker}, self.requester)
