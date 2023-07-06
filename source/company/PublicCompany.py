@@ -7,11 +7,13 @@ from datetime import datetime, timedelta
 from .balance_sheet import generate_fake_balance_sheet
 from .income import generate_fake_income_statement
 from .cash_flow import generate_fake_cash_flow
-from source.Requests import Requests
-from source.Messaging import Requester
+
 
 class PublicCompany:
-    def __init__(self, name, initial_price, initial_cash, startdate, exchange_channel):
+    """
+    Runs all public companies as a process Generating financial reports, distributing dividends, and issuing shares
+    """
+    def __init__(self, name, initial_price, initial_cash, startdate, requester, exchange_channel = 5570):
         self.name = name
         self.symbol = name[:3].upper()
         self.price = initial_price
@@ -21,22 +23,19 @@ class PublicCompany:
         self.shareholders = []
         self.outstanding_shares = 0
         self.ex_dividend_date = None
-        self.requests = Requests(requester=Requester(exchange_channel))
-    
-    def issue_shares(self, shares, price):
+        self.requests = requester
+
+    async def issue_shares(self, shares, price):
         self.cash += shares * price
         self.price = price
         self.requests.create_asset(self.symbol, shares, price, price * 0.99, price * 1.01)
 
-    def generate_financial_report(self, date, period, symbol):
+    async def generate_financial_report(self, date, period, symbol):
         balance_sheet = generate_fake_balance_sheet(date, symbol, period)
         income_statement = generate_fake_income_statement(date, symbol, period)
         cash_flow = generate_fake_cash_flow(balance_sheet['retainedEarnings'], date, symbol, period)
-        print(f"Balance Sheet - {self.currentdate}:\n{balance_sheet}")
-        print(f"Income Statement - {self.currentdate}:\n{income_statement}")
-        print(f"Cash Flow - {self.currentdate}:\n{cash_flow}")
     
-    def distribute_dividends(self, dividends_paid):
+    async def distribute_dividends(self, dividends_paid):
         total_shares = sum(sum(shareholder["shares"]) for shareholder in self.shareholders)
         eligible_shareholders = []
         for shareholder in self.shareholders:
@@ -51,18 +50,18 @@ class PublicCompany:
             self.cash -= dividend
             print(f"Dividends distributed to {shareholder['name']} - {self.currentdate}: {dividend}")
     
-    def calculate_ex_dividend_date(self, dividend_payment_date):
+    async def calculate_ex_dividend_date(self, dividend_payment_date):
         # Subtracting 2 days from the dividend payment date to determine the ex-dividend date
         self.ex_dividend_date = dividend_payment_date - timedelta(days=2)
     
-    def add_shareholder(self, name, shares=[], sold_date=[]):
+    async def add_shareholder(self, name, shares=[], sold_date=[]):
         self.shareholders.append({"name": name, "shares": shares, "sold_date": sold_date})
     
-    def remove_shareholder(self, name):
+    async def remove_shareholder(self, name):
         self.shareholders.remove(shareholder for shareholder in self.shareholders if shareholder['name'] == name )
 
-    def next(self, date, dividends_paid, dividend_payment_date):
-        #TODO: get shareholders from exchange
+    async def next(self, date, dividends_paid, dividend_payment_date):
+        self.shareholders = await self.requests.get_agents_holding(self.symbol)
         self.calculate_ex_dividend_date(dividend_payment_date)
         while self.currentdate < date:
             self.currentdate += timedelta(days=1) # TODO: pull this from the clock process
