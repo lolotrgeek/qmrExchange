@@ -4,7 +4,6 @@ from .types.OrderBook import OrderBook
 from .types.Trade import Trade
 from .types.LimitOrder import LimitOrder
 from .types.OrderSide import OrderSide
-from .Blockchain import Blockchain
 from .types.Fees import Fees
 from .utils._utils import format_dataframe_rows_to_dict
 from uuid import uuid4 as UUID
@@ -13,33 +12,35 @@ from uuid import uuid4 as UUID
 class Exchange():
     def __init__(self, datetime= None):
         self.agents = []
+        self.assets = {}
         self.books = {}
         self.trade_log: List[Trade] = [] #TODO: this is going to get to big to hold in memory, need a DB
         self.datetime = datetime
         self.agents_cash_updates = []
+        self.blockchain = None
         self.fees = Fees()
-        self.crypto = False
-        self.blockchain = self.crypto if self.crypto else Blockchain(datetime=datetime)
 
     async def __str__(self):
         return ', '.join(ob for ob in self.books)
 
-    async def create_asset(self, ticker: str, market_qty=1000, seed_price=100, seed_bid=.99, seed_ask=1.01) -> OrderBook:
+    async def create_asset(self, ticker: str, type: str, market_qty=1000, seed_price=100, seed_bid=.99, seed_ask=1.01) -> OrderBook:
         """_summary_
 
         Args:
             ticker (str): the ticker of the new asset
+            type (str): the type of asset, either 'crypto', 'stock', 'currency', 'bond', 'cash'
             marekt_qty (int, optional): the total amount of the asset in circulation. async defaults to 1000.
             seed_price (int, optional): Price of an initial trade that is created for ease of use. async defaults to 100.
             seed_bid (float, optional): Limit price of an initial buy order, expressed as percentage of the seed_price. async defaults to .99.
             seed_ask (float, optional): Limit price of an initial sell order, expressed as percentage of the seed_price. async defaults to 1.01.
         """
+        self.assets = {}
         self.books[ticker] = OrderBook(ticker)
         self.agents.append({'name':'init_seed_'+ticker,'cash':market_qty * seed_price,'_transactions':[], 'assets': {ticker: market_qty}})
         await self._process_trade(ticker, market_qty, seed_price, 'init_seed_'+ticker, 'init_seed_'+ticker)
         await self.limit_buy(ticker, seed_price * seed_bid, 1, 'init_seed_'+ticker)
         await self.limit_sell(ticker, seed_price * seed_ask, market_qty, 'init_seed_'+ticker)
-        return self.books[ticker]
+        return self.assets[ticker]
    
     async def _process_trade(self, ticker, qty, price, buyer, seller, fee=0.0):
         # check that seller and buyer have cash and assets before processing trade
@@ -50,12 +51,12 @@ class Exchange():
         
         trade = Trade(ticker, qty, price, buyer, seller, self.datetime, fee=fee)
         self.trade_log.append(trade)
-        if(self.crypto):
-            #NOTE: the `fee` is the network fee and the exchange fee since the exchange fee is added to the transaction before it is added to the blockchain
-            # while not how this works, this is makes calulating the overall fee easier for the simulator
-            self.blockchain.add_transaction(ticker, fee, amount=qty*price, sender=seller, recipient=buyer, dt=self.datetime)
-            await self.__update_agents_currency(self.blockchain.mempool.transactions[-1])
-            return self.blockchain.mempool.transactions[-1]
+        if (self.assets[ticker] ) and (self.assets[ticker]['type'] == 'crypto'):
+            # TODO: send request to add transaction to blockchain
+            # blockchain.add_transaction(ticker, fee, amount=qty*price, sender=seller, recipient=buyer, dt=datetime)
+            response = None
+            await self.__update_agents_currency(response)
+
         else:
             transaction = [
                 {'agent':buyer,'cash_flow':-qty*price,'ticker':ticker,'qty': qty, 'fee':fee, 'type': 'buy'},

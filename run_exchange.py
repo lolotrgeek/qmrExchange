@@ -1,7 +1,6 @@
 from datetime import datetime
 import traceback
-from source.Clock import Clock
-from source.Messaging import Responder
+from source.Messaging import Responder, Requester, Puller
 from source.Exchange import Exchange
 from source.utils._utils import dumps
 from rich import print
@@ -12,17 +11,29 @@ asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 tickers = ['XYZ', 'ABC', 'DEF', 'GHI', 'JKL', 'MNO', 'PQR', 'STU', 'VWX', 'YZA', 'BCD', 'EFG', 'HIJ', 'KLM', 'NOP', 'QRS', 'TUV', 'WXY', 'ZAB', 'CDE', 'FGH', 'IJK', 'LMN', 'OPQ', 'RST', 'UVW']
 
-async def run_exchange(exchange_channel = 5570):
+async def run_exchange(exchange_channel = 5570, time_channel = 5114):
     try: 
         exchange = Exchange(datetime=datetime(1700,1,1))
         for ticker in tickers:
             asset = (await exchange.create_asset(ticker))
             # print(asset.asks, asset.bids)
         print(f'{len(tickers)} assets created.')
-
+        time_puller = Puller(time_channel)
         responder = Responder(exchange_channel)
+        requester = Requester(exchange_channel)
         await responder.connect()
-        clock = Clock()
+        await requester.connect()
+
+        def get_time():
+            clock = time_puller.pull()
+            if clock == None: 
+                pass
+            elif type(clock) is dict and 'time' not in clock:
+                pass
+            elif type(clock['time']) is dict:
+                pass
+            else: 
+                exchange.datetime = clock['time']  
 
         async def callback(msg):
             if msg['topic'] == 'create_asset': return dumps((await exchange.create_asset(msg['ticker'],msg['qty'], msg['seed_price'], msg['seed_bid'], msg['seed_ask'])).to_dict())
@@ -47,12 +58,15 @@ async def run_exchange(exchange_channel = 5570):
             elif msg['topic'] == 'get_agent': return dumps(await exchange.get_agent(msg['name']))
             elif msg['topic'] == 'get_agents': return dumps(await exchange.get_agents())
             elif msg['topic'] == 'add_cash': return dumps(await exchange.add_cash(msg['agent'], msg['amount']))
+            elif msg['topic'] == 'get_cash': return dumps(await exchange.get_cash(msg['agent']))
+            elif msg['topic'] == 'get_assets': return dumps(await exchange.get_assets(msg['agent']))
+            elif msg['topic'] == 'get_agents_holding': return dumps(await exchange.get_agents_holding(msg['ticker']))
             #TODO: exchange topic to get general exchange data
             else: return f'unknown topic {msg["topic"]}'
 
         last_latest_trade = None
         while True:
-            exchange.datetime = clock.tick()
+            get_time()
             msg = await responder.respond(callback)
             if msg == None:
                 continue
