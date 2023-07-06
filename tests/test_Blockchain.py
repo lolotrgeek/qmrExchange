@@ -6,7 +6,7 @@ import unittest
 from datetime import datetime
 import random
 import pandas as pd
-from source.Blockchain import Blockchain,  MempoolTransaction
+from source.crypto.Blockchain import Blockchain,  MempoolTransaction
 
 class BlockchainTests(unittest.TestCase):
 
