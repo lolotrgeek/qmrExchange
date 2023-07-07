@@ -13,17 +13,32 @@ class PublicCompany:
     """
     Runs all public companies as a process Generating financial reports, distributing dividends, and issuing shares
     """
-    def __init__(self, name, initial_price, initial_cash, startdate, requester, exchange_channel = 5570):
+    def __init__(self, name, initial_price, startdate, requester, responder):
         self.name = name
         self.symbol = name[:3].upper()
         self.price = initial_price
-        self.cash = initial_cash
         self.startdate = startdate
-        self.currentdate = startdate 
-        self.shareholders = []
+        self.currentdate = startdate
+        self.quarters = [
+            datetime(startdate.year, startdate.month+3, startdate.day), 
+            datetime(startdate.year, startdate.month+6, startdate.day), 
+            datetime(startdate.year, startdate.month+9, startdate.day), 
+            datetime(startdate.year, startdate.month+12, startdate.day)
+        ] 
         self.outstanding_shares = 0
+        self.shareholders = []
+        self.balance_sheet = None
+        self.income_statement = None
+        self.cash_flow = None
         self.ex_dividend_date = None
+        self.dividend_payment_date = None
+        self.dividends_to_distribute = 0
         self.requests = requester
+        self.responder = responder
+        self.generate_financial_report(self.currentdate, "annual", self.symbol)
+        if self.dividends_to_distribute > 0:
+            self.ex_dividend_date = datetime(self.currentdate.year, self.currentdate.month+1, self.currentdate.day)
+            self.dividend_payment_date = self.ex_dividend_date + timedelta(weeks=4)
 
     async def issue_shares(self, shares, price):
         self.cash += shares * price
@@ -31,57 +46,62 @@ class PublicCompany:
         self.requests.create_asset(self.symbol, shares, price, price * 0.99, price * 1.01)
 
     async def generate_financial_report(self, date, period, symbol):
-        balance_sheet = generate_fake_balance_sheet(date, symbol, period)
-        income_statement = generate_fake_income_statement(date, symbol, period)
-        cash_flow = generate_fake_cash_flow(balance_sheet['retainedEarnings'], date, symbol, period)
+        self.balance_sheet = generate_fake_balance_sheet(date, symbol, period)
+        self.income_statement = generate_fake_income_statement(date, symbol, period)
+        self.cash_flow = generate_fake_cash_flow(self.balance_sheet['retainedEarnings'], date, symbol, period)
+        self.dividends_to_distribute = self.income_statement["dividendsPaid"] * -1
     
-    async def distribute_dividends(self, dividends_paid):
+    async def distribute_dividends(self, eligible_shareholders, dividends_paid):
         total_shares = sum(sum(shareholder["shares"]) for shareholder in self.shareholders)
-        eligible_shareholders = []
-        for shareholder in self.shareholders:
-            shares = sum(shareholder["shares"])
-            if len(shareholder["shares"]) > 0 and (self.startdate <= self.ex_dividend_date or any(date is None or date >= self.ex_dividend_date for date in shareholder["sold_date"])):
-                eligible_shareholders.append(shareholder)
-        
         for shareholder in eligible_shareholders:
             shares = sum(shareholder["shares"])
             dividend = (shares / total_shares) * dividends_paid
             shareholder["dividend"] = dividend
-            self.cash -= dividend
-            print(f"Dividends distributed to {shareholder['name']} - {self.currentdate}: {dividend}")
+            self.requests.add_cash(shareholder["name"], dividend)
     
-    async def calculate_ex_dividend_date(self, dividend_payment_date):
-        # Subtracting 2 days from the dividend payment date to determine the ex-dividend date
-        self.ex_dividend_date = dividend_payment_date - timedelta(days=2)
+
+    async def get_eligible_shareholders(self):
+        eligible_shareholders = []
+        for shareholder in self.shareholders:
+            for position in self.shareholders["positions"]:
+                # ignore positions bought after exdividend date
+                if position["dt"] > self.ex_dividend_date:
+                    shareholder["positions"].remove(position)
+                else:
+                    # calculate the number of shares eligible for dividends
+                    eligible_shareholder = {'name': shareholder['agent'] ,'shares':0}
+                    for transaction in position["transactions"]:
+                        if transaction["dt"] < self.ex_dividend_date:
+                            eligible_shareholder["shares"] += transaction["qty"]
+                    eligible_shareholders.append(eligible_shareholder)
+        return eligible_shareholders
     
-    async def add_shareholder(self, name, shares=[], sold_date=[]):
-        self.shareholders.append({"name": name, "shares": shares, "sold_date": sold_date})
-    
-    async def remove_shareholder(self, name):
-        self.shareholders.remove(shareholder for shareholder in self.shareholders if shareholder['name'] == name )
+    async def quarterly_things(self, quarter):
+        await self.generate_financial_report(self.currentdate, quarter, self.symbol)
+        if self.dividends_to_distribute > 0:
+            self.ex_dividend_date = datetime(self.currentdate.year, self.currentdate.month+1, self.currentdate.day)
+            self.dividend_payment_date = self.ex_dividend_date + timedelta(weeks=4)
 
-    async def next(self, date, dividends_paid, dividend_payment_date):
-        self.shareholders = await self.requests.get_agents_holding(self.symbol)
-        self.calculate_ex_dividend_date(dividend_payment_date)
-        while self.currentdate < date:
-            self.currentdate += timedelta(days=1) # TODO: pull this from the clock process
-            if self.currentdate.month % 3 == 0 and self.currentdate.day == 1:
-                self.generate_financial_report()
-            if self.currentdate.month % 3 == 0 and self.currentdate.day == 15:
-                #TODO: get eligible shareholders from shareholders 
-                self.distribute_dividends(dividends_paid)
 
-# # Example usage
-# start_date = datetime(2023, 1, 1)
-# end_date = datetime(2023, 12, 31)
-# dividends_paid = random.randint(-40, -10) * -1
-# dividend_payment_date = datetime(2023, 3, 15)
+            
+    async def next(self, current_date):
+        self.currentdate = current_date
+        
+        if self.currentdate == self.quarters[0]:
+            await self.quarterly_things("Q1")
+        elif self.currentdate == self.quarters[1]:
+            await self.quarterly_things("Q2")
+        elif self.currentdate == self.quarters[2]:
+            await self.quarterly_things("Q3")
+        elif self.currentdate == self.quarters[3]:
+            await self.quarterly_things("Q4")
 
-# company = PublicCompany("ABC Corporation", 100, 1000000, start_date)
-# company.shareholders = [
-#     {"name": "Shareholder A", "shares": [1000, 2000, 3000], "sold_date": [datetime(2023, 1, 15), datetime(2023, 3, 15), None]},
-#     {"name": "Shareholder B", "shares": [2000], "sold_date": [datetime(2023, 3, 15)]},
-#     {"name": "Shareholder C", "shares": [3000], "sold_date": [None]},
-# ]
+        if self.currentdate == self.dividend_payment_date:
+            self.shareholders = await self.requests.get_agents_positions(self.symbol)
+            eligible_shareholders = await self.get_eligible_shareholders()
+            self.distribute_dividends(eligible_shareholders, self.dividends_to_distribute)
+            self.dividends_to_distribute = 0
+            
 
-# company.next(end_date, dividends_paid, dividend_payment_date)
+            
+

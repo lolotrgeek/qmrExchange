@@ -7,8 +7,10 @@ import random
 import string
 
 
-# a function that randomly generates one to five letter company names
 def generate_names(num_companies=20):
+    """
+    A function that randomly generates one to five letter company names
+    """
     names = []
     for i in range(num_companies):
         name = ''
@@ -20,10 +22,10 @@ def generate_names(num_companies=20):
             i -= 1
     return names
 
-def generate_companies(names, requester, time):
+def generate_companies(names, requester, responder, time):
     companies = []
     for name in names:
-        companies.append(PublicCompany(name,random.randint(0,1000), random.randit(0,1000000000), time, requester))
+        companies.append(PublicCompany(name,random.randint(0,1000), time, requester, responder))
     return companies
 
 async def run_companies(time_channel=5114, exchange_channel=5570, company_channel=5572):
@@ -47,12 +49,17 @@ async def run_companies(time_channel=5114, exchange_channel=5570, company_channe
             else: 
                 return clock['time']  
 
-        async def callback(msg):
-            if msg['topic'] == 'get_stocks': return dumps(await company.issue_shares(msg['shares'], msg['price']))
-            else: return f'unknown topic {msg["topic"]}'
-
         time = get_time()
-        companies = generate_companies(generate_names(num_companies),requester, time)
+        companies = generate_companies(generate_names(num_companies), Requests(requester), responder, time)
+
+        async def callback(msg):
+            if msg['topic'] == 'get_income_statement': return (company.income_statement for company in companies if company.name == msg['company'])
+            elif msg['topic'] == 'get_balance_sheet': return (company.balance_sheet for company in companies if company.name == msg['company'])
+            elif msg['topic'] == 'get_cash_flow': return (company.cash_flow for company in companies if company.name == msg['company'])
+            elif msg['topic'] == 'get_dividend_payment_date': return (company.dividend_payment_date for company in companies if company.name == msg['company'])
+            elif msg['topic'] == 'get_ex_dividend_date': return (company.ex_dividend_date for company in companies if company.name == msg['company'])
+            elif msg['topic'] == 'get_dividends_to_distribute': return (company.dividends_to_distribute for company in companies if company.name == msg['company'])
+            else: return f'unknown topic {msg["topic"]}'
 
         while True:
             for company in companies:
