@@ -49,7 +49,7 @@ def generate_fake_balance_sheet(date, symbol, period):
 
     preferred_stock = random.randint(0, 10000000000)
     common_stock = random.randint(5000000000, 80000000000)
-    retained_earnings = random.randint(0, 10000000000)
+    retained_earnings = lambda x = 0: x if (random.randint(0,2) != 2) else random.randint(0, 10000000000)
     accumulated_other_comprehensive_income_loss = random.randint(-20000000000, 0)
     other_total_stockholders_equity = random.randint(0, 10000000000)
     total_stockholders_equity = common_stock + retained_earnings + accumulated_other_comprehensive_income_loss + other_total_stockholders_equity
