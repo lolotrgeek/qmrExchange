@@ -1,4 +1,3 @@
-import random
 import sys
 import os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -40,12 +39,34 @@ class PublicCompany:
             self.ex_dividend_date = datetime(self.currentdate.year, self.currentdate.month+1, self.currentdate.day)
             self.dividend_payment_date = self.ex_dividend_date + timedelta(weeks=4)
 
-    async def issue_shares(self, shares, price):
-        self.cash += shares * price
+    #TODO: make all actions below alter the company's financials
+
+    async def initial_shares(self, shares, price):
         self.price = price
         self.requests.create_asset(self.symbol, shares, price, price * 0.99, price * 1.01)
 
+    async def issue_shares(self, shares, price):
+        #TODO: this needs to be a special sell order similar to that in create_asset
+        pass
+
+    async def buyback_shares(self, shares, price):
+        #TODO: place a market order to buy shares
+        pass
+
+    async def split_shares(self, ratio):
+        #TODO: split shares
+        pass
+
+    async def cease_operations(self):
+        #TODO: bancrupt company, delist, and liquidate all assets, pay off all debts, and distribute remaining cash to shareholders
+        pass
+
+    async def delist(self):
+        #TODO: delist company on exchange, meaning no more shares can be bought or sold
+        pass
+
     async def generate_financial_report(self, date, period, symbol):
+        #TODO: use the prior period's financials to generate the current period's financials, integrate lower probabilities for large changes
         self.balance_sheet = generate_fake_balance_sheet(date, symbol, period)
         self.income_statement = generate_fake_income_statement(date, symbol, period)
         self.cash_flow = generate_fake_cash_flow(self.balance_sheet['retainedEarnings'], date, symbol, period)
