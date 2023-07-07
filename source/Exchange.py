@@ -42,7 +42,7 @@ class Exchange():
         await self.limit_sell(ticker, seed_price * seed_ask, market_qty, 'init_seed_'+ticker)
         return self.assets[ticker]
    
-    async def _process_trade(self, ticker, qty, price, buyer, seller, fee=0.0):
+    async def _process_trade(self, ticker, qty, price, buyer, seller, accounting, fee=0.0):
         # check that seller and buyer have cash and assets before processing trade
         if not await self.agent_has_cash(buyer, price, qty):
             return None
@@ -63,7 +63,7 @@ class Exchange():
                 {'agent':seller,'cash_flow':qty*price,'ticker':ticker,'qty': -qty, 'fee':fee, 'type': 'sell'}
             ]
             # self.agents_cash_updates.extend(transaction)
-            await self.__update_agents_cash(transaction)
+            await self.__update_agents(transaction, accounting)
             # print('transaction: ',transaction)
             return transaction
 
@@ -211,12 +211,12 @@ class Exchange():
         else:
             return LimitOrder("error", 0, 0, 'insufficient_funds', OrderSide.BUY, self.datetime)
 
-    async def limit_sell(self, ticker: str, price: float, qty: int, creator: str, fee=0, tif='GTC'):
+    async def limit_sell(self, ticker: str, price: float, qty: int, creator: str, fee=0, tif='GTC', accounting='FIFO'):
         if await self.agent_has_assets(creator, ticker, qty):
             if not self.crypto:
                 price = round(price,2)
-            # check if we can match trades before submitting the limit order
             unfilled_qty = qty
+            # check if we can match trades before submitting the limit order
             while unfilled_qty > 0:
                 if tif == 'TEST':
                     break
@@ -226,7 +226,7 @@ class Exchange():
                     taker_fee = self.fees.taker_fee(trade_qty)
                     self.fees.total_fee_revenue += taker_fee
                     if(type(fee) is str): fee = float(fee)
-                    await self._process_trade(ticker, trade_qty, best_bid.price, best_bid.creator, creator, fee=fee+taker_fee)
+                    await self._process_trade(ticker, trade_qty, best_bid.price, best_bid.creator, creator, accounting, fee=fee+taker_fee)
                     unfilled_qty -= trade_qty
                     self.books[ticker].bids[0].qty -= trade_qty
                     self.books[ticker].bids = [bid for bid in self.books[ticker].bids if bid.qty > 0]
@@ -301,7 +301,7 @@ class Exchange():
         else:
             return {"market_buy": "insufficient funds"}
 
-    async def market_sell(self, ticker: str, qty: int, seller: str, fee=0.0):
+    async def market_sell(self, ticker: str, qty: int, seller: str, fee=0.0, accounting='FIFO'):
         if await self.agent_has_assets(seller, ticker, qty):
             fills = []
             for idx, bid in enumerate(self.books[ticker].bids):
@@ -314,7 +314,7 @@ class Exchange():
                 self.fees.total_fee_revenue += taker_fee
                 if(type(fee) is str): fee = float(fee)
                 fills.append({'qty': trade_qty, 'price': bid.price, 'fee': fee+taker_fee})
-                await self._process_trade(ticker, trade_qty,bid.price, bid.creator, seller, fee=fee+taker_fee)
+                await self._process_trade(ticker, trade_qty,bid.price, bid.creator, seller, accounting, fee=fee+taker_fee)
                 if qty == 0:
                     break
             self.books[ticker].bids = [bid for bid in self.books[ticker].bids if bid.qty > 0]
@@ -348,7 +348,7 @@ class Exchange():
     async def register_agent(self, name, initial_cash):
         #TODO: use an agent class???
         registered_name = name + str(UUID())[0:8]
-        self.agents.append({'name':registered_name,'cash':initial_cash,'_transactions':[], 'assets': {}})
+        self.agents.append({'name':registered_name,'cash':initial_cash,'_transactions':[], 'positions':[], 'assets': {}})
         return {'registered_agent':registered_name}
 
     async def get_cash(self, agent_name):
@@ -359,17 +359,31 @@ class Exchange():
         agent_info = await self.get_agent(agent)
         return {'assets': agent_info['assets']}
     
-    async def __update_agents_cash(self, transaction):
+    async def __update_agents(self, transaction, accounting):
         for side in transaction:
             agent_idx = await self.__get_agent_index(side['agent'])
             if agent_idx is not None:
                 self.agents[agent_idx]['cash'] += side['cash_flow']
-                self.agents[agent_idx]['_transactions'].append({'dt':self.datetime,'cash_flow':side['cash_flow'],'ticker':side['ticker'],'qty':side['qty'], 'type': side['type']})
+                sided_transaction = {'id': UUID(),'dt':self.datetime,'cash_flow':side['cash_flow'],'ticker':side['ticker'],'qty':side['qty'], 'type': side['type']}
+                if side['type'] == 'buy':
+                    self.agents[agent_idx]['positions'].append({'id': UUID(), 'ticker':side['ticker'],'qty':side['qty'], 'dt':self.datetime, 'transactions':[sided_transaction]})
+                elif side['type'] == 'sell':
+                    if accounting == 'FIFO':
+                        self.agents[agent_idx]['positions'].sort(key=lambda x: x['dt'])
+                    if accounting == 'LIFO':
+                        self.agents[agent_idx]['positions'].sort(key=lambda x: x['dt'], reverse=True)
+                    for idx, position in enumerate(self.agents[agent_idx]['positions']):
+                        if position['ticker'] == side['ticker']:
+                            if position['qty'] > side['qty']:
+                                self.agents[agent_idx]['positions'][idx]['qty'] -= side['qty']
+                                self.agents[agent_idx]['positions'][idx]['transactions'].append(sided_transaction)
+                            break
+                self.agents[agent_idx]['_transactions'].append(sided_transaction)
                 if side['ticker'] in self.agents[agent_idx]['assets']: 
-                    # print('updating... ',side['type'] , ' ', self.agents[agent_idx]['name'],' ',self.agents[agent_idx]['assets'][side['ticker']],'to',self.agents[agent_idx]['assets'][side['ticker']] + side['qty'])
                     self.agents[agent_idx]['assets'][side['ticker']] += side['qty']
-                else: self.agents[agent_idx]['assets'][side['ticker']] = side['qty']
-                 
+                else: 
+                    self.agents[agent_idx]['assets'][side['ticker']] = side['qty']
+                
     async def __update_agents_currency(self, transaction):
         if transaction.confirmed:
             buyer_idx = await self.__get_agent_index(transaction.recipient)
@@ -426,7 +440,6 @@ class Exchange():
         market_cap = price * shares_outstanding
         return market_cap
     
-
     async def get_shares_outstanding(self, ticker):
         """
         Calculates the number of shares outstanding for a given ticker
@@ -440,7 +453,6 @@ class Exchange():
                 shares_outstanding += agent['assets'][ticker]
         return shares_outstanding
     
-    # write a method that gets all the agents hold a given ticker
     async def get_agents_holding(self, ticker):
         """
         Returns a list of agents holding a given ticker
@@ -451,5 +463,18 @@ class Exchange():
         agents_holding = []
         for agent in self.agents:
             if ticker in agent['assets']:
-                agents_holding.append(agent)
+                agents_holding.append(agent['name'])
         return agents_holding
+    
+    async def get_agents_positions(self,ticker):
+        """
+        Returns a list of agents positions of a given ticker
+        """
+        agent_positions = []
+        for agent in self.agents:
+            positions = []
+            for position in agent['positions']:
+                if position['ticker'] == ticker:
+                    position.append(position)
+            agent_positions.append({'agent':agent['name'],'positions':positions})
+        return agent_positions

@@ -4,6 +4,9 @@ import traceback
 import asyncio
 
 class Requests():
+    """
+    Creates an API for for making requests to the exchange process.
+    """
     def __init__(self, requester):
         self.requester = requester
         self.timeout = 5
@@ -106,3 +109,6 @@ class Requests():
     
     async def get_agents_holding(self, ticker):
         return await self.make_request('get_agents_holding', {'ticker': ticker}, self.requester)
+    
+    async def get_agents_positions(self, ticker):
+        return await self.make_request('get_agents_positions', {'ticker': ticker}, self.requester)
