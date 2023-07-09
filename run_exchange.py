@@ -33,7 +33,7 @@ async def run_exchange(exchange_channel = 5570, time_channel = 5114):
             elif type(clock['time']) is dict:
                 pass
             else: 
-                exchange.datetime = clock['time']  
+                exchange.datetime = datetime.strptime(clock['time'], '%Y-%m-%d %H:%M:%S')
 
         async def callback(msg):
             if msg['topic'] == 'create_asset': return dumps((await exchange.create_asset(msg['ticker'],msg['qty'], msg['seed_price'], msg['seed_bid'], msg['seed_ask'])).to_dict())

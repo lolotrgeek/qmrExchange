@@ -37,12 +37,12 @@ class Exchange():
         self.assets[ticker] = {'type':type}
         self.books[ticker] = OrderBook(ticker)
         self.agents.append({'name':'init_seed_'+ticker,'cash':market_qty * seed_price,'_transactions':[], 'positions':[], 'assets': {ticker: market_qty}})
-        await self._process_trade(ticker, market_qty, seed_price, 'init_seed_'+ticker, 'init_seed_'+ticker, 'FIFO')
+        await self._process_trade(ticker, market_qty, seed_price, 'init_seed_'+ticker, 'init_seed_'+ticker)
         await self.limit_buy(ticker, seed_price * seed_bid, 1, 'init_seed_'+ticker)
         await self.limit_sell(ticker, seed_price * seed_ask, market_qty, 'init_seed_'+ticker)
         return self.assets[ticker]
    
-    async def _process_trade(self, ticker, qty, price, buyer, seller, accounting, fee=0.0):
+    async def _process_trade(self, ticker, qty, price, buyer, seller, accounting='FIFO', fee=0.0):
         # check that seller and buyer have cash and assets before processing trade
         if not await self.agent_has_cash(buyer, price, qty):
             return None

@@ -1,5 +1,5 @@
-from .source.Messaging import Pusher, Router
-from .source.Clock import Clock
+from source.Messaging import Pusher, Router
+from source.Clock import Clock
 from multiprocessing import Process
 from time import sleep
 
@@ -47,3 +47,6 @@ def main():
         clock_router.terminate()
         clock_process.join()
         clock_router.join()
+
+if __name__ == '__main__':
+    main()
