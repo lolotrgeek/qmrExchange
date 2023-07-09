@@ -1,7 +1,5 @@
 # 🚀EconSim🚀
-A simulated exchange where price action is a result of agents interacting through an order book.
-
-This implements qmrExchange where agents and the exchange run in separate processes.
+A simulated economy with an exchange using backed assets.
 
 ## UNDER DEVELOPMENT
 -- version 0.1 -- 
