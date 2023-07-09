@@ -7,12 +7,11 @@ from .balance_sheet import generate_fake_balance_sheet
 from .income import generate_fake_income_statement
 from .cash_flow import generate_fake_cash_flow
 
-
 class PublicCompany:
     """
     Runs all public companies as a process Generating financial reports, distributing dividends, and issuing shares
     """
-    def __init__(self, name, initial_price, startdate, requester, responder):
+    def __init__(self, name, initial_price, startdate, requester):
         self.name = name
         self.symbol = name[:3].upper()
         self.price = initial_price
@@ -33,7 +32,6 @@ class PublicCompany:
         self.dividend_payment_date = None
         self.dividends_to_distribute = 0
         self.requests = requester
-        self.responder = responder
         self.generate_financial_report(self.currentdate, "annual", self.symbol)
         if self.dividends_to_distribute > 0:
             self.ex_dividend_date = datetime(self.currentdate.year, self.currentdate.month+1, self.currentdate.day)
@@ -80,7 +78,6 @@ class PublicCompany:
             shareholder["dividend"] = dividend
             self.requests.add_cash(shareholder["name"], dividend)
     
-
     async def get_eligible_shareholders(self):
         eligible_shareholders = []
         for shareholder in self.shareholders:
@@ -102,9 +99,7 @@ class PublicCompany:
         if self.dividends_to_distribute > 0:
             self.ex_dividend_date = datetime(self.currentdate.year, self.currentdate.month+1, self.currentdate.day)
             self.dividend_payment_date = self.ex_dividend_date + timedelta(weeks=4)
-
-
-            
+    
     async def next(self, current_date):
         self.currentdate = current_date
         
@@ -123,6 +118,3 @@ class PublicCompany:
             self.distribute_dividends(eligible_shareholders, self.dividends_to_distribute)
             self.dividends_to_distribute = 0
             
-
-            
-
