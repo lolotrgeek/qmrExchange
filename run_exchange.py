@@ -15,7 +15,7 @@ async def run_exchange(exchange_channel = 5570, time_channel = 5114):
     try: 
         exchange = Exchange(datetime=datetime(1700,1,1))
         for ticker in tickers:
-            asset = (await exchange.create_asset(ticker))
+            asset = (await exchange.create_asset(ticker, 'stock'))
             # print(asset.asks, asset.bids)
         print(f'{len(tickers)} assets created.')
         time_puller = Puller(time_channel)

@@ -34,10 +34,10 @@ class Exchange():
             seed_bid (float, optional): Limit price of an initial buy order, expressed as percentage of the seed_price. async defaults to .99.
             seed_ask (float, optional): Limit price of an initial sell order, expressed as percentage of the seed_price. async defaults to 1.01.
         """
-        self.assets = {}
+        self.assets[ticker] = {'type':type}
         self.books[ticker] = OrderBook(ticker)
-        self.agents.append({'name':'init_seed_'+ticker,'cash':market_qty * seed_price,'_transactions':[], 'assets': {ticker: market_qty}})
-        await self._process_trade(ticker, market_qty, seed_price, 'init_seed_'+ticker, 'init_seed_'+ticker)
+        self.agents.append({'name':'init_seed_'+ticker,'cash':market_qty * seed_price,'_transactions':[], 'positions':[], 'assets': {ticker: market_qty}})
+        await self._process_trade(ticker, market_qty, seed_price, 'init_seed_'+ticker, 'init_seed_'+ticker, 'FIFO')
         await self.limit_buy(ticker, seed_price * seed_bid, 1, 'init_seed_'+ticker)
         await self.limit_sell(ticker, seed_price * seed_ask, market_qty, 'init_seed_'+ticker)
         return self.assets[ticker]
@@ -51,7 +51,7 @@ class Exchange():
         
         trade = Trade(ticker, qty, price, buyer, seller, self.datetime, fee=fee)
         self.trade_log.append(trade)
-        if (self.assets[ticker] ) and (self.assets[ticker]['type'] == 'crypto'):
+        if ticker in self.assets and (self.assets[ticker]['type'] == 'crypto'):
             # TODO: send request to add transaction to blockchain
             # blockchain.add_transaction(ticker, fee, amount=qty*price, sender=seller, recipient=buyer, dt=datetime)
             response = None
@@ -175,7 +175,7 @@ class Exchange():
 
     async def limit_buy(self, ticker: str, price: float, qty: int, creator: str, fee=0, tif='GTC'):
         if await self.agent_has_cash(creator, price, qty):
-            if not self.crypto:
+            if not self.assets[ticker]['type'] == 'crypto':
                 price = round(price,2)
             # check if we can match trades before submitting the limit order
             unfilled_qty = qty
@@ -213,7 +213,7 @@ class Exchange():
 
     async def limit_sell(self, ticker: str, price: float, qty: int, creator: str, fee=0, tif='GTC', accounting='FIFO'):
         if await self.agent_has_assets(creator, ticker, qty):
-            if not self.crypto:
+            if not self.assets[ticker]['type'] == 'crypto':
                 price = round(price,2)
             unfilled_qty = qty
             # check if we can match trades before submitting the limit order

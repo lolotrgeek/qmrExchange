@@ -3,8 +3,7 @@ from source.types.OrderSide import OrderSide
 from source.types.LimitOrder import LimitOrder
 from source.types.OrderBook import OrderBook
 from source.Exchange import Exchange
-from source.Agents import RandomMarketTaker, NaiveMarketMaker, CryptoMarketMaker, CryptoMarketTaker
-from source.run import main
+from source.Agents import RandomMarketTaker, NaiveMarketMaker
 import asyncio
 import sys
 import traceback
