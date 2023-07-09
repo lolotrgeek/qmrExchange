@@ -1,4 +1,4 @@
-# 🚀qmrExchange - Process🚀
+# 🚀EconSim🚀
 A simulated exchange where price action is a result of agents interacting through an order book.
 
 This implements qmrExchange where agents and the exchange run in separate processes.
@@ -9,7 +9,10 @@ This implements qmrExchange where agents and the exchange run in separate proces
 ## Usage
 
 ```
-python main.py
+python run_clock.py
+python run_exchange.py
+python run_agents.py
+
 ```
 
 Run dashboard
@@ -33,3 +36,6 @@ pytest
 
 
 ## Asset Backing
+
+## Credits
+Exchange based on https://github.com/QMResearch/qmrExchange 
